@@ -1,5 +1,7 @@
 # Calibration offsets (degrees): URDF_angle = offset - Mecademic_angle
-# Derived from slider visual match [38,33,-83,2] at actual home [-0.213,-0.196,-0.046,0.006]
+# Derived from slider visual match [38,33,-83,2] 
+# at actual home [-0.213,-0.196,-0.046,0.006]
+
 joint1: 0.0
 joint2: 40.282
 joint3: 34.984

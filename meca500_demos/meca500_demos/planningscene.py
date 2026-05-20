@@ -10,13 +10,10 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Pose
-from moveit_msgs.msg import (
-    AttachedCollisionObject,
-    CollisionObject,
-    PlanningScene,
-)
+from moveit_msgs.msg import (CollisionObject, PlanningScene)
 from rclpy.node import Node
 from shape_msgs.msg import SolidPrimitive
+
 import yaml
 
 
@@ -80,6 +77,7 @@ class PlanningSceneClass:
         col_object = CollisionObject()
         col_object.header.frame_id = self.frame_id
         col_object.header.stamp = self.node.get_clock().now().to_msg()
+        
         # Set the object ID:
         col_object.id = obstacle.name
 
@@ -95,9 +93,7 @@ class PlanningSceneClass:
         self.planscene.publish(pscene)
 
         # Remove the object from the list:
-        self.obstacles.pop(obstacle.name, None)
-
-  
+        self.obstacles.pop(obstacle.name, None)  
 
     def load_scene(self, filename):
         """
@@ -132,7 +128,6 @@ class PlanningSceneClass:
             # Create the Obstacle and add it to the world:
             obstacle = Obstacle(entry['name'], pose, prim)
             self.add_obstacle(obstacle)
-
 
 class Obstacle:
 

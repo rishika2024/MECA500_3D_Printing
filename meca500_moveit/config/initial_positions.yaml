@@ -1,4 +1,5 @@
 # Default initial positions for meca500's ros2_control fake system
+# in radians
 
 initial_positions:
   joint1: 0.0

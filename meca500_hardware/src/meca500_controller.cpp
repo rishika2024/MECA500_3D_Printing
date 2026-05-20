@@ -146,15 +146,15 @@ namespace meca500_hardware
         for (size_t i = 0; i < NUM_JOINTS; ++i) {
             auto it = info_.hardware_parameters.find(keys[i]);
             if (it != info_.hardware_parameters.end()) {
-                joint_offsets_deg_[i] = std::stod(it->second);
+                joint_offsets_deg_.at(i) = std::stod(it->second);
             } else {
-                joint_offsets_deg_[i] = 0.0;
+                joint_offsets_deg_.at(i) = 0.0;
                 RCLCPP_WARN(get_logger(), "%s not found in hardware params, defaulting to 0", keys[i].c_str());
             }
         }
         RCLCPP_INFO(get_logger(), "Joint offsets (deg): %.3f %.3f %.3f %.3f %.3f %.3f",
-            joint_offsets_deg_[0], joint_offsets_deg_[1], joint_offsets_deg_[2],
-            joint_offsets_deg_[3], joint_offsets_deg_[4], joint_offsets_deg_[5]);
+            joint_offsets_deg_.at(0), joint_offsets_deg_.at(1), joint_offsets_deg_.at(2),
+            joint_offsets_deg_.at(3), joint_offsets_deg_.at(4), joint_offsets_deg_.at(5));
 
         return CallbackReturn::SUCCESS;
     }
@@ -248,8 +248,12 @@ namespace meca500_hardware
             cmd = "GetJoints";
             send(control_fd, cmd.c_str(), cmd.size() + 1, 0);
             char jbuf[512] = {0};
+            //jresp accumulates partial socket reads.
             std::string jresp;
+            // attempt 5 reads
             for (int attempt = 0; attempt < 5; ++attempt) {
+                // memset basically sets all bytes of the data to a given value
+                // in this case: 0, to clear the buffer before each recv call
                 memset(jbuf, 0, sizeof(jbuf));
                 int n = recv(control_fd, jbuf, sizeof(jbuf) - 1, 0);
                 if (n > 0) {
@@ -277,9 +281,9 @@ namespace meca500_hardware
                             hw_commands_ = hw_positions_;
                             RCLCPP_INFO(rclcpp::get_logger("Meca500System"),
                                 "Initial joints (deg): %.3f %.3f %.3f %.3f %.3f %.3f",
-                                hw_positions_[0]*180/M_PI, hw_positions_[1]*180/M_PI,
-                                hw_positions_[2]*180/M_PI, hw_positions_[3]*180/M_PI,
-                                hw_positions_[4]*180/M_PI, hw_positions_[5]*180/M_PI);
+                                hw_positions_.at(0)*180/M_PI, hw_positions_.at(1)*180/M_PI,
+                                hw_positions_.at(2)*180/M_PI, hw_positions_.at(3)*180/M_PI,
+                                hw_positions_.at(4)*180/M_PI, hw_positions_.at(5)*180/M_PI);
                         }
                     } catch (const std::exception & e) {
                         RCLCPP_WARN(rclcpp::get_logger("Meca500System"),
