@@ -6,6 +6,7 @@
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
+#include <std_msgs/msg/string.hpp>
 
 int main(int argc, char* argv[])
 {
@@ -19,6 +20,15 @@ int main(int argc, char* argv[])
   auto spinner = std::thread([&executor]() { executor.spin(); });
 
   auto const logger = rclcpp::get_logger("meca500_trajectory_node");
+
+  // G-code subscriber
+  auto gcode_sub = node->create_subscription<std_msgs::msg::String>(
+      "gcode_input", 10,
+      [&logger](const std_msgs::msg::String::SharedPtr msg) {
+        RCLCPP_INFO(logger, "Received G-code:\n%s", msg->data.c_str());
+        // TODO: parse and execute once frames are sorted
+      }
+  );
 
   using moveit::planning_interface::MoveGroupInterface;
   auto move_group_interface = MoveGroupInterface(node, "meca500_arm");
@@ -151,7 +161,7 @@ int main(int argc, char* argv[])
     plan_and_execute("[PTP] Return");
   }
 
-  RCLCPP_INFO(logger, "All motions complete. Ctrl+C to exit.");
+  RCLCPP_INFO(logger, "All motions complete. Listening for G-code on /gcode_input. Ctrl+C to exit.");
   spinner.join();
   rclcpp::shutdown();
   return 0;
