@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ROS2 node that loads objects.yaml into the MoveIt planning scene."""
 import rclpy
 from rclpy.node import Node
@@ -9,13 +10,15 @@ class SceneNode(Node):
     def __init__(self):
         super().__init__('scene_node')
         self.scene = PlanningSceneClass(self)
-        # Delay publish so move_group has time to start
-        self.timer = self.create_timer(2.0, self.publish_scene)
+        self.published = False
+        # Republish every 5s so move_group receives it regardless of startup order
+        self.timer = self.create_timer(5.0, self.publish_scene)
 
     def publish_scene(self):
         self.scene.load_scene('objects.yaml')
-        self.get_logger().info('Planning scene published.')
-        self.timer.cancel()
+        if not self.published:
+            self.get_logger().info('Planning scene published.')
+            self.published = True
 
 
 def main(args=None):

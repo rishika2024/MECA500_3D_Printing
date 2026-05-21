@@ -1,0 +1,13 @@
+<launch>
+    <arg name='use_mock_hardware' default='true' description='true = sim, false = real Meca500'/>
+
+    <include file='$(find-pkg-share meca500_moveit)/launch/demo.launch.py'>
+        <arg name='use_mock_hardware' value='$(var use_mock_hardware)'/>
+        <arg name='use_rviz' value='false'/>
+    </include>
+
+    <node pkg='rviz2' exec='rviz2' output='screen'
+          args='-d $(find-pkg-share meca500_demos)/config/traj.rviz'/>
+
+    <node pkg='meca500_demos' exec='trajectory'/>
+</launch>

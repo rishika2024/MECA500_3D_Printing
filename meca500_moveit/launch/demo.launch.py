@@ -15,6 +15,8 @@ def generate_launch_description():
             description="Meca500 control port"),
         DeclareLaunchArgument("monitoring_port", default_value="10001",
             description="Meca500 monitoring port"),
+        DeclareLaunchArgument("use_rviz", default_value="true",
+            description="Launch RViz (true) or headless (false)"),
     ]
 
     moveit_config = (
@@ -25,6 +27,10 @@ def generate_launch_description():
             "control_port":      LaunchConfiguration("control_port"),
             "monitoring_port":   LaunchConfiguration("monitoring_port"),
         })
+        .planning_pipelines(
+            pipelines=["ompl", "pilz_industrial_motion_planner"],
+            default_planning_pipeline="pilz_industrial_motion_planner",
+        )
         .to_moveit_configs()
     )
 
