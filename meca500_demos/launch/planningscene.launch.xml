@@ -1,9 +1,0 @@
-<launch>
-    <arg name='use_mock_hardware' default='true' description='true = sim, false = real Meca500'/>
-
-    <include file='$(find-pkg-share meca500_moveit)/launch/demo.launch.py'>
-        <arg name='use_mock_hardware' value='$(var use_mock_hardware)'/>
-    </include>
-
-    <node pkg='meca500_demos' exec='scene_node'/>
-</launch>

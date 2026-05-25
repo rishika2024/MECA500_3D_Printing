@@ -7,7 +7,8 @@
     </include>
 
     <node pkg='rviz2' exec='rviz2' output='screen'
-          args='-d $(find-pkg-share meca500_demos)/config/traj.rviz'/>
+          args='-d $(find-pkg-share meca500_demo)/config/traj.rviz'/>
 
-    <node pkg='meca500_demos' exec='trajectory'/>
+    <node pkg='meca500_demo' exec='trajectory'/>
+    <node pkg='meca500_demo' exec='planningscene'/>
 </launch>

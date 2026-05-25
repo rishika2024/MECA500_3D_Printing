@@ -23,6 +23,14 @@ namespace gcode
         /// \brief feedrate in mm/min
         double f = 600.0;
 
+        /// \bool
+        bool has_x = false;
+        bool has_y = false;
+        bool has_z = false;
+    
+        bool has_i = false;
+        bool has_j = false;
+    
     };
 
     /// \brief A full G-code program (list of moves)

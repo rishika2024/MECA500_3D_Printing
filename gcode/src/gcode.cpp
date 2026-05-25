@@ -30,18 +30,23 @@ namespace gcode
             }
             else if (letter == 'X') { 
                 move.x = std::stod(value); 
+                move.has_x = true;
             }
             else if (letter == 'Y') {
                 move.y = std::stod(value); 
+                move.has_y = true;
             }
             else if (letter == 'Z') {
                 move.z = std::stod(value);
+                move.has_z = true;
             }
             else if (letter == 'I') {
                 move.i = std::stod(value);
+                move.has_i = true;
             }
             else if (letter == 'J') {
                 move.j = std::stod(value);
+                move.has_j = true;
             }
             else if (letter == 'F') {
                 move.f = std::stod(value); 
