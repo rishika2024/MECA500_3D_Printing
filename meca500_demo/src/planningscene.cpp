@@ -84,7 +84,7 @@ private:
       table.pose.orientation.w = this->get_parameter("qw").as_double();
       table.scale.x = 0.5;
       table.scale.y = 0.5;
-      table.scale.z = 0.01;
+      table.scale.z = 0.001;
       table.color.r = 0.0f;
       table.color.g = 1.0f;
       table.color.b = 0.0f;

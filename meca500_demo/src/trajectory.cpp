@@ -5,6 +5,7 @@
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
+#include <moveit/robot_state/robot_state.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
 #include <visualization_msgs/msg/marker.hpp>
@@ -47,8 +48,8 @@ public:
     //Publisher
     goal_marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("goal_marker", 10);   
 
-    //Subscriber
-    // gcode_sub = this->create_subscription<std_msgs::msg::String>(
+    // Subscriber
+    // gcode_sub_ = this->create_subscription<std_msgs::msg::String>(
     //     "gcode_input", 10,
     //     [this](const std_msgs::msg::String::SharedPtr msg)
     //     {gcode_callback(msg);
@@ -72,10 +73,12 @@ private:
   rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr table_pos_sub;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr goal_marker_pub;
   double x, y, z, qx, qy, qz, qw;
+  bool moved_to_bed_ = false;
 
   // ---------------- PLAN + EXECUTE ----------------
   void plan_and_execute(const std::string& title)
   {
+    
     moveit::planning_interface::MoveGroupInterface::Plan plan;
 
     if (move_group_->plan(plan))
@@ -87,76 +90,7 @@ private:
     {
       RCLCPP_ERROR(this->get_logger(), "%s planning FAILED", title.c_str());
     }
-  }
-
-  // ---------------- EXECUTE GCODE ----------------
-  void execute(const gcode::GcodeProgram& program)
-  {
-    move_group_->startStateMonitor(3.0);
-
-    geometry_msgs::msg::PoseStamped current_pose =
-        move_group_->getCurrentPose("link_6__flange");
-
-    geometry_msgs::msg::Pose pose = current_pose.pose;
-
-    for (const auto& move : program.moves)
-    {
-      if (move.command.empty())
-        continue;
-
-      // ---------------- G1 ----------------
-      if (move.command == "G1")
-      {
-        RCLCPP_INFO(this->get_logger(), move.command.c_str());
-
-        // move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
-        // move_group_->setPlannerId("LIN");
-
-        // if (move.has_x) pose.position.x = move.x / 100.0;
-        // if (move.has_y) pose.position.y = move.y / 100.0 - 115.0 / 1000.0;
-        // if (move.has_z) pose.position.z = move.z / 100.0;
-
-        // geometry_msgs::msg::PoseStamped target;
-        // target.header.frame_id = "world";
-        // target.pose = pose;
-
-        // RCLCPP_INFO(this->get_logger(), "[LIN] target: x=%.4f y=%.4f z=%.4f  qx=%.3f qy=%.3f qz=%.3f qw=%.3f",
-        //   pose.position.x, pose.position.y, pose.position.z,
-        //   pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
-
-        // move_group_->setPoseTarget(target, "link_6__flange");
-        // plan_and_execute("[LIN]");
-      }
-
-      // // ---------------- G2 / G3 (still simplified) ----------------
-      // else if (move.command == "G2" || move.command == "G3")
-      // {
-      //   move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
-      //   move_group_->setPlannerId("CIRC");
-
-      //   if (move.has_x) pose.position.x = move.x / 1000.0;
-      //   if (move.has_y) pose.position.y = move.y / 1000.0;
-      //   if (move.has_z) pose.position.z = move.z / 1000.0;
-
-      //   geometry_msgs::msg::PoseStamped target;
-      //   target.header.frame_id = "world";
-      //   target.pose = pose;
-
-      //   move_group_->setPoseTarget(target, "link_6__flange");
-      //   plan_and_execute("[CIRC]");
-      // }
-    }
-  }
-
-  // ---------------- GCODE SUBSCRIBER CALLBACK ----------------
-  // void gcode_callback(const std_msgs::msg::String::SharedPtr msg)
-  // {
-  //   RCLCPP_INFO(this->get_logger(), "Received G-code:\n%s", msg->data.c_str());
-  //   auto program = gcode::parse(msg->data);
-  //   execute(program);
-  // }
-
- 
+  } 
 
   void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg){
     x = msg->pose.position.x;
@@ -175,9 +109,7 @@ private:
     T.block<3,1>(0,3) = t;    // translation part
     Eigen::Vector4d P_print(0.1, -0.1, 0.0, 1.0);  // homogeneous coordinates
     Eigen::Vector4d P_robot = T * P_print;
-    RCLCPP_INFO(this->get_logger(),
-    "Transformed point in robot frame: x=%.3f y=%.3f z=%.3f",
-    P_robot.x(), P_robot.y(), P_robot.z());
+    
 
     visualization_msgs::msg::Marker goal_marker;
     goal_marker.header.frame_id = "world";
@@ -193,18 +125,42 @@ private:
     goal_marker.scale.x = 0.02;
     goal_marker.scale.y = 0.02;
     goal_marker.scale.z = 0.02;
-    goal_marker.color.r = 0.0f;
+    goal_marker.color.r = 1.0f;
     goal_marker.color.g = 0.0f;
     goal_marker.color.b = 0.0f;
     goal_marker.color.a = 1.0;
     goal_marker_pub->publish(goal_marker);
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    if (!moved_to_bed_) {
+      moved_to_bed_ = true;
 
-    move_group_->setPlanningPipelineId("ompl");
-    move_group_->setPlannerId("RRTConnect");
-    move_group_->setPositionTarget(P_robot.x(), P_robot.y(), P_robot.z(), "link_6__flange");
-    plan_and_execute("move_to_target");
+      // Compute FK at home config to get a safe EE orientation
+      // (prevents KDL from finding joint6 = 628 rad with the raw table orientation)
+      const auto* jmg = move_group_->getRobotModel()->getJointModelGroup("meca500_arm");
+      auto seed = std::make_shared<moveit::core::RobotState>(move_group_->getRobotModel());
+      std::vector<double> home = {0.0, 0.7069, 0.6140, -1.4471, 0.0352, 0.0};
+      seed->setJointGroupPositions(jmg, home);
+      seed->update();
+      Eigen::Isometry3d home_tf = seed->getGlobalLinkTransform("link_6__flange");
+      Eigen::Quaterniond home_q(home_tf.rotation());
+
+      geometry_msgs::msg::Pose target;
+      target.position.x = P_robot.x();
+      target.position.y = P_robot.y();
+      target.position.z = P_robot.z();
+      target.orientation.x = home_q.x();
+      target.orientation.y = home_q.y();
+      target.orientation.z = home_q.z();
+      target.orientation.w = home_q.w();
+
+      move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
+      move_group_->setPlannerId("PTP");
+      move_group_->setMaxVelocityScalingFactor(1.0);
+      move_group_->setMaxAccelerationScalingFactor(1.0);
+      move_group_->setPoseTarget(target, "link_6__flange");
+      
+      plan_and_execute("move_to_target");
+    }
     
   }
 };
