@@ -1,22 +1,15 @@
 #include <sstream>
-#include <string>
 #include "gcode.hpp"
 
 namespace gcode
 {
 
-    std::istream& operator>>(std::istream& is, GcodeMove& move)
+    Move parse_line(const std::string& line)
     {
-        std::string line;
-        if (!std::getline(is, line)) return is;
+        Move move;
 
-        // Skip empty and comments
-        if (line.empty() || line[0] == ';') {
-            move.command = "";
-            return is;
-        }
+        if (line.empty() || line[0] == ';') return move;
 
-        // Split line into tokens and check each one
         std::istringstream tokens(line);
         std::string token;
 
@@ -25,57 +18,52 @@ namespace gcode
             std::string value = token.substr(1);
 
             if (letter == 'G') {
-                move.command = "G" + value;
-                if (move.command == "G0") move.command = "G1"; //G1 and G0 are both linear moves, we will treat them the same
+                move.cmd = "G" + value;                
             }
-            else if (letter == 'X') { 
-                move.x = std::stod(value); 
-                move.has_x = true;
+            else if (letter == 'X') {
+                move.x = std::stod(value);
             }
             else if (letter == 'Y') {
-                move.y = std::stod(value); 
-                move.has_y = true;
+                move.y = std::stod(value);
             }
             else if (letter == 'Z') {
                 move.z = std::stod(value);
-                move.has_z = true;
             }
-            else if (letter == 'I') {
-                move.i = std::stod(value);
-                move.has_i = true;
-            }
-            else if (letter == 'J') {
-                move.j = std::stod(value);
-                move.has_j = true;
-            }
-            else if (letter == 'F') {
-                move.f = std::stod(value); 
-            }
-            // skip anything else (M commands, comments, etc.)
         }
 
-        return is;
+        return move;
     }
 
-    std::istream& operator>>(std::istream& is, GcodeProgram& program)
+    void Program::add(const std::string& line)
     {
-        program.moves.clear();
-        GcodeMove move;
-
-        while (is >> move) {
-            if (move.command.empty()) continue;
-            program.moves.push_back(move);
-            move = GcodeMove{};
+        Move move = parse_line(line);
+        if (!move.cmd.empty()) {
+            moves.push_back(move);
         }
-        return is;
     }
 
-    GcodeProgram parse(const std::string& gcode_text)
-    {
-        GcodeProgram program;
-        std::istringstream stream(gcode_text);
-        stream >> program;
-        return program;
+    void Program::clear() { moves.clear(); }
+
+    size_t Program::size() const { return moves.size(); }
+
+    Program parse(const std::string& text)
+{
+    Program program;
+    // Replace literal \n with actual newlines
+    std::string clean = text;
+    size_t pos = 0;
+    while ((pos = clean.find("\\n", pos)) != std::string::npos) {
+        clean.replace(pos, 2, "\n");
     }
+
+    std::istringstream stream(clean);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        program.add(line);
+    }
+
+    return program;
+}
 
 } // namespace gcode

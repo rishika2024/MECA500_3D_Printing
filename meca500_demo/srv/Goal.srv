@@ -1,5 +1,5 @@
 # Request
-geometry_msgs/Point[] points
+string gcode
 ---
 # Response
 bool success
