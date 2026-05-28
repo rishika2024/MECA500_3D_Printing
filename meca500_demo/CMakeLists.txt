@@ -24,6 +24,7 @@ find_package(rosidl_default_generators REQUIRED)
 # ── service interfaces ────
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/Table.srv"
+  "srv/Goal.srv"
   DEPENDENCIES geometry_msgs
   
 )
@@ -52,10 +53,12 @@ target_link_libraries(trajectory PUBLIC
   ${geometry_msgs_TARGETS}
   ${visualization_msgs_TARGETS}
   ${control_msgs_TARGETS}
+  ${moveit_msgs_TARGETS}
   moveit_ros_planning_interface::moveit_move_group_interface
   moveit_visual_tools::moveit_visual_tools
   gcode::gcode
   Eigen3::Eigen
+  ${cpp_typesupport_target}
 )
 install(TARGETS trajectory DESTINATION lib/${PROJECT_NAME})
 

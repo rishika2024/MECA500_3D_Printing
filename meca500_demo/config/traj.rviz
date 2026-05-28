@@ -5,9 +5,15 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /MotionPlanning1
+        - /MotionPlanning1/Scene Geometry1
+        - /MotionPlanning1/Scene Robot1
+        - /MotionPlanning1/Planning Request1
+        - /MotionPlanning1/Planning Metrics1
+        - /MotionPlanning1/Planned Path1
         - /MarkerArray1
         - /Marker1
         - /Marker2
+        - /Marker3
       Splitter Ratio: 0.5
     Tree Height: 164
   - Class: rviz_common/Help
@@ -106,11 +112,11 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-        Loop Animation: true
+        Loop Animation: false
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
         Show Robot Collision: false
-        Show Robot Visual: true
+        Show Robot Visual: false
         Show Trail: false
         State Display Time: 0.05 s
         Trail Step Size: 1
@@ -221,7 +227,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        red: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -229,6 +235,19 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /goal_marker
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /perpendicular_marker
       Value: true
   Enabled: true
   Global Options:
@@ -248,7 +267,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 1.800292730331421
+      Distance: 2.1178507804870605
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -263,10 +282,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.1100001335144043
+      Pitch: -0.039999913424253464
       Target Frame: link_0__base
       Value: Orbit (rviz_default_plugins)
-      Yaw: 4.995182514190674
+      Yaw: 0.08199603855609894
     Saved: ~
 Window Geometry:
   Displays:

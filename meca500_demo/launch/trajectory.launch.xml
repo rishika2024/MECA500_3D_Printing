@@ -9,6 +9,10 @@
     <node pkg='rviz2' exec='rviz2' output='screen'
           args='-d $(find-pkg-share meca500_demo)/config/traj.rviz'/>
 
-    <node pkg='meca500_demo' exec='trajectory'/>
+    <node pkg='meca500_demo' exec='trajectory'>
+        <param from='$(find-pkg-share meca500_demo)/config/trajectory_kinematics.yaml'/>
+    </node>
+        
+
     <node pkg='meca500_demo' exec='planningscene'/>
 </launch>

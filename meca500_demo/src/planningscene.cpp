@@ -15,13 +15,13 @@ public:
   Meca500PlanningScene()
   : Node("meca500_planning_scene")
   {
-    this->declare_parameter("x", 0.0);
+    this->declare_parameter("x", 0.0);  
     this->declare_parameter("y", 0.20);
-    this->declare_parameter("z", 0.25);
-    this->declare_parameter("qx", 0.707);
-    this->declare_parameter("qy", 0.0);
-    this->declare_parameter("qz", 0.0);
-    this->declare_parameter("qw", 0.707);
+    this->declare_parameter("z", 0.0);
+    this->declare_parameter("qx", 0.321);
+    this->declare_parameter("qy", -0.537);
+    this->declare_parameter("qz", 0.721);
+    this->declare_parameter("qw", 0.284);
 
     // Give the planning scene interface time to connect to move_group
     rclcpp::sleep_for(500ms);

@@ -29,7 +29,7 @@ def generate_launch_description():
         })
         .planning_pipelines(
             pipelines=["ompl", "pilz_industrial_motion_planner"],
-            default_planning_pipeline="pilz_industrial_motion_planner",
+            default_planning_pipeline="ompl",
         )
         .to_moveit_configs()
     )

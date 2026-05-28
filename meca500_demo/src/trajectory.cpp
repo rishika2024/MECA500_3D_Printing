@@ -6,12 +6,17 @@
 #include <std_msgs/msg/string.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit/robot_state/robot_state.hpp>
+#include <moveit/kinematic_constraints/utils.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <moveit_msgs/msg/motion_sequence_request.hpp>
+#include <moveit_msgs/msg/motion_sequence_item.hpp>
+#include <moveit_msgs/srv/get_motion_sequence.hpp>
 #include <Eigen/Dense>
 
 #include "gcode.hpp"
+#include "meca500_demo/srv/goal.hpp"
 
 using namespace std::chrono_literals;
 
@@ -28,9 +33,9 @@ public:
 
     using moveit::planning_interface::MoveGroupInterface;
 
-    // Initialize MoveGroupInterface 
+    // Initialize MoveGroupInterface
     move_group_ = std::make_shared<MoveGroupInterface>(shared_from_this(), "meca500_arm");
-    
+
     // Initialize action client for trajectory execution
     action_client_ = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
         shared_from_this(), "meca500_arm_controller/follow_joint_trajectory");
@@ -46,24 +51,35 @@ public:
     RCLCPP_INFO(this->get_logger(), "State monitor ready.");
 
     //Publisher
-    goal_marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("goal_marker", 10);   
+    goal_marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("goal_marker", 10);
+
+    perpendicular_marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("perpendicular_marker", 10);
 
     // Subscriber
     // gcode_sub_ = this->create_subscription<std_msgs::msg::String>(
     //     "gcode_input", 10,
     //     [this](const std_msgs::msg::String::SharedPtr msg)
     //     {gcode_callback(msg);
-    //     }      
+    //     }
     //   );
 
     RCLCPP_INFO(this->get_logger(), "Ready. Waiting for G-code...");
 
     table_pos_sub = this->create_subscription<visualization_msgs::msg::Marker>(
       "table_marker", 10,
-      [this](const visualization_msgs::msg::Marker::SharedPtr msg)
-      {table_callback(msg);
+      [this](const visualization_msgs::msg::Marker::SharedPtr msg) {
+        table_callback(msg);
       }
     );
+
+    // Service
+    goal_server = this->create_service<meca500_demo::srv::Goal>(
+      "goal_service",
+      std::bind(&Meca500Trajectory::goal_callback, this,
+                std::placeholders::_1, std::placeholders::_2));
+
+    // Service client to get motion sequence from the planner
+    sequence_client_ = this->create_client<moveit_msgs::srv::GetMotionSequence>("/plan_sequence_path");
   }
 
 private:
@@ -72,27 +88,15 @@ private:
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr gcode_sub_;
   rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr table_pos_sub;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr goal_marker_pub;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr perpendicular_marker_pub;
+  rclcpp::Service<meca500_demo::srv::Goal>::SharedPtr goal_server;
+  rclcpp::Client<moveit_msgs::srv::GetMotionSequence>::SharedPtr sequence_client_;
+  std::vector<std::array<double, 3>> goal_array; // {{x1, y1, z1}, {x2, y2, z2}, ...}
   double x, y, z, qx, qy, qz, qw;
   bool moved_to_bed_ = false;
+  Eigen::Quaterniond ee_orient_;
 
-  // ---------------- PLAN + EXECUTE ----------------
-  void plan_and_execute(const std::string& title)
-  {
-    
-    moveit::planning_interface::MoveGroupInterface::Plan plan;
-
-    if (move_group_->plan(plan))
-    {
-      RCLCPP_INFO(this->get_logger(), "%s planning OK", title.c_str());
-      move_group_->execute(plan);
-    }
-    else
-    {
-      RCLCPP_ERROR(this->get_logger(), "%s planning FAILED", title.c_str());
-    }
-  } 
-
-  void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg){
+  void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg) {
     x = msg->pose.position.x;
     y = msg->pose.position.y;
     z = msg->pose.position.z;
@@ -100,68 +104,161 @@ private:
     qy = msg->pose.orientation.y;
     qz = msg->pose.orientation.z;
     qw = msg->pose.orientation.w;
+  }
 
-    Eigen::Quaterniond q(qw, qx, qy, qz);
-    Eigen::Vector3d t(x, y, z);
-    
+  void goal_callback(
+    const std::shared_ptr<meca500_demo::srv::Goal::Request>  req,
+          std::shared_ptr<meca500_demo::srv::Goal::Response> res) {
+
+    goal_array.clear();
+
+    Eigen::Quaterniond q_table(qw, qx, qy, qz); // table orientation
+    Eigen::Vector3d t_table(x, y, z); // table position
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-    T.block<3,3>(0,0) = q.normalized().toRotationMatrix();  // rotation part
-    T.block<3,1>(0,3) = t;    // translation part
-    Eigen::Vector4d P_print(0.1, -0.1, 0.0, 1.0);  // homogeneous coordinates
-    Eigen::Vector4d P_robot = T * P_print;
-    
+    T.block<3,3>(0,0) = q_table.normalized().toRotationMatrix();  // rotation part
+    T.block<3,1>(0,3) = t_table;    // translation part
 
-    visualization_msgs::msg::Marker goal_marker;
-    goal_marker.header.frame_id = "world";
-    goal_marker.header.stamp = this->get_clock()->now();
-    goal_marker.ns = "red";
-    goal_marker.id = 0;
-    goal_marker.type = visualization_msgs::msg::Marker::SPHERE;
-    goal_marker.action = visualization_msgs::msg::Marker::ADD;
-    goal_marker.pose.position.x = P_robot.x();
-    goal_marker.pose.position.y = P_robot.y();
-    goal_marker.pose.position.z = P_robot.z();
-    goal_marker.pose.orientation.w = 1.0;
-    goal_marker.scale.x = 0.02;
-    goal_marker.scale.y = 0.02;
-    goal_marker.scale.z = 0.02;
-    goal_marker.color.r = 1.0f;
-    goal_marker.color.g = 0.0f;
-    goal_marker.color.b = 0.0f;
-    goal_marker.color.a = 1.0;
-    goal_marker_pub->publish(goal_marker);
+    for (const auto& pt : req->points) {
+      Eigen::Vector4d P_table(pt.x, pt.y, pt.z, 1.0); // point in table frame (homogeneous coordinates)
+      Eigen::Vector4d P_robot = T * P_table; // transform to robot frame
+      goal_array.push_back({P_robot.x(), P_robot.y(), P_robot.z()});
+    }
+
+    res->success = true;
+
+    // getting the table's normal vector and center position in the robot frame
+    Eigen::Matrix3d R_table = q_table.normalized().toRotationMatrix(); // rotation matrix of the table
+    Eigen::Vector3d table_center(x, y, z); // center of the table
+    Eigen::Vector3d table_normal = R_table.col(2);
 
     if (!moved_to_bed_) {
       moved_to_bed_ = true;
 
-      // Compute FK at home config to get a safe EE orientation
-      // (prevents KDL from finding joint6 = 628 rad with the raw table orientation)
-      const auto* jmg = move_group_->getRobotModel()->getJointModelGroup("meca500_arm");
-      auto seed = std::make_shared<moveit::core::RobotState>(move_group_->getRobotModel());
-      std::vector<double> home = {0.0, 0.7069, 0.6140, -1.4471, 0.0352, 0.0};
-      seed->setJointGroupPositions(jmg, home);
-      seed->update();
-      Eigen::Isometry3d home_tf = seed->getGlobalLinkTransform("link_6__flange");
-      Eigen::Quaterniond home_q(home_tf.rotation());
+      // Build perpendicular orientation
+      // Pick the normal direction that points toward the robot base (world origin)
+      Eigen::Vector3d to_robot = -table_center;  // vector from table center to origin
+      if (table_normal.dot(to_robot) < 0) {
+        table_normal = -table_normal;  // flip so it points toward the robot
+      }
+      Eigen::Vector3d z_ee = table_normal;
+      // choose vect to be an axis that is not parallel to z_ee
+      // cross product between z_ee and vect will give y_ee, which is perpendicular to z_ee and vect
+      // now, x_ee is perpendicular to both z_ee and y_ee,
+      // so x_ee = y_ee cross z_ee
+      // This way, we can ensure the end-effector's z-axis is aligned with the table normal,
+      // and the x and y axes are perpendicular to it, forming a right-handed coordinate system
+      Eigen::Vector3d vect = Eigen::Vector3d::UnitX();
+      if (std::abs(z_ee.dot(vect)) > 0.9) {
+        vect = Eigen::Vector3d::UnitY();
+      }
+      Eigen::Vector3d y_ee = z_ee.cross(vect).normalized();
+      Eigen::Vector3d x_ee = y_ee.cross(z_ee).normalized();
 
-      geometry_msgs::msg::Pose target;
-      target.position.x = P_robot.x();
-      target.position.y = P_robot.y();
-      target.position.z = P_robot.z();
-      target.orientation.x = home_q.x();
-      target.orientation.y = home_q.y();
-      target.orientation.z = home_q.z();
-      target.orientation.w = home_q.w();
+      // End-effector orientation as a rotation matrix and quaternion
+      Eigen::Matrix3d R_ee;
+      R_ee.col(0) = x_ee;
+      R_ee.col(1) = y_ee;
+      R_ee.col(2) = z_ee;
+      ee_orient_ = Eigen::Quaterniond(R_ee);
+      ee_orient_.normalize();
+      bool success = false;
 
-      move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
-      move_group_->setPlannerId("PTP");
-      move_group_->setMaxVelocityScalingFactor(1.0);
-      move_group_->setMaxAccelerationScalingFactor(1.0);
-      move_group_->setPoseTarget(target, "link_6__flange");
-      
-      plan_and_execute("move_to_target");
+      // for the 1st goal point
+      // Sample along perpendicular line
+      // draw a line from the table surface (t=0) to a point above the table (t=0.35) passing
+      // through the goal point
+      // try to plan and execute a trajectory for each point along the line until one succeeds
+
+      for (double t = 0.05; t <= 0.35; t += 0.02) {
+        Eigen::Vector3d table_origin(0.0, 0.0, 0.0);
+        Eigen::Vector3d p = table_center + t * table_normal;
+
+        geometry_msgs::msg::Pose target;
+        target.position.x = p.x();
+        target.position.y = p.y();
+        target.position.z = p.z();
+        target.orientation.x = ee_orient_.x();
+        target.orientation.y = ee_orient_.y();
+        target.orientation.z = ee_orient_.z();
+        target.orientation.w = ee_orient_.w();
+
+        RCLCPP_INFO(this->get_logger(), "Trying t=%.2f pos[%.3f, %.3f, %.3f]",
+            t, p.x(), p.y(), p.z());
+
+        move_group_->setPlanningPipelineId("ompl");
+        move_group_->setPlannerId("RRTConnect");
+        move_group_->setPlanningTime(10.0);
+        move_group_->setMaxVelocityScalingFactor(0.05);
+        move_group_->setMaxAccelerationScalingFactor(0.05);
+        move_group_->setPoseTarget(target, "link_6__flange");
+
+        moveit::planning_interface::MoveGroupInterface::Plan plan;
+        if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+          RCLCPP_INFO(this->get_logger(), "SUCCESS at t=%.2f! Executing...", t);
+          move_group_->execute(plan);
+          success = true;
+          // Wait for state monitor to update
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
+          break;
+        }
+        move_group_->clearPoseTargets();
+      }
+
+      // Now reaching the table surface
+      if (success) {
+        geometry_msgs::msg::Pose target;
+
+        target.position.x = table_center.x();
+        target.position.y = table_center.y();
+        target.position.z = table_center.z();
+        target.orientation.x = ee_orient_.x();
+        target.orientation.y = ee_orient_.y();
+        target.orientation.z = ee_orient_.z();
+        target.orientation.w = ee_orient_.w();
+
+        move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
+        move_group_->setPlannerId("LIN");
+        move_group_->setPlanningTime(10.0);
+        move_group_->setMaxVelocityScalingFactor(0.05);
+        move_group_->setMaxAccelerationScalingFactor(0.05);
+        move_group_->setPoseTarget(target, "link_6__flange");
+        moveit::planning_interface::MoveGroupInterface::Plan lin_to_table_plan;
+        if (move_group_->plan(lin_to_table_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+          RCLCPP_INFO(this->get_logger(), "Planning to table surface SUCCESS! Executing...");
+          move_group_->execute(lin_to_table_plan);
+        }
+        RCLCPP_INFO(this->get_logger(), "Reached table origin!");
+      }
     }
-    
+
+    if (moved_to_bed_) {
+      for (size_t i = 0; i < goal_array.size(); i++) {
+        geometry_msgs::msg::Pose target;
+        target.position.x = goal_array[i][0];
+        target.position.y = goal_array[i][1];
+        target.position.z = goal_array[i][2];
+        target.orientation.x = ee_orient_.x();
+        target.orientation.y = ee_orient_.y();
+        target.orientation.z = ee_orient_.z();
+        target.orientation.w = ee_orient_.w();
+
+        move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
+        move_group_->setPlannerId("LIN");
+        move_group_->setMaxVelocityScalingFactor(0.05);
+        move_group_->setMaxAccelerationScalingFactor(0.05);
+        move_group_->setPoseTarget(target, "link_6__flange");
+
+        moveit::planning_interface::MoveGroupInterface::Plan plan;
+        if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+          RCLCPP_INFO(this->get_logger(), "LIN to point %zu SUCCESS", i);
+          move_group_->execute(plan);
+        } else {
+          RCLCPP_ERROR(this->get_logger(), "LIN to point %zu FAILED", i);
+          res->success = false;
+          return;
+        }
+      }
+    }
   }
 };
 
