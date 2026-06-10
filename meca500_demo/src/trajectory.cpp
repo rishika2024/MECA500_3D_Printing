@@ -10,6 +10,7 @@
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
 #include <visualization_msgs/msg/marker.hpp>
+#include <shape_msgs/msg/solid_primitive.hpp>
 #include <moveit_msgs/msg/motion_sequence_request.hpp>
 #include <moveit_msgs/msg/motion_sequence_item.hpp>
 #include <moveit_msgs/srv/get_motion_sequence.hpp>
@@ -57,10 +58,14 @@ public:
     move_group_->startStateMonitor(3.0);
     RCLCPP_INFO(this->get_logger(), "State monitor ready.");
 
+    use_mock_hardware_ = this->get_parameter("use_mock_hardware").as_bool();
+    RCLCPP_INFO(this->get_logger(), "Mock hardware: %s", use_mock_hardware_ ? "true" : "false");
+
     //Publisher
     goal_marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("goal_marker", 10);
 
     perpendicular_marker_pub = this->create_publisher<visualization_msgs::msg::Marker>("perpendicular_marker", 10);
+    trace_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("ee_trace", 10);
 
     // Subscriber
     // gcode_sub_ = this->create_subscription<std_msgs::msg::String>(
@@ -96,13 +101,27 @@ private:
   rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr table_pos_sub;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr goal_marker_pub;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr perpendicular_marker_pub;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr trace_pub_;
+  std::vector<geometry_msgs::msg::Point> trace_points_;
   rclcpp::Service<meca500_demo::srv::Goal>::SharedPtr goal_server;
   rclcpp::Client<moveit_msgs::srv::GetMotionSequence>::SharedPtr sequence_client_;
-  std::vector<std::array<double, 3>> goal_array; // {{x1, y1, z1}, {x2, y2, z2}, ...}
+
+ 
+  struct TrajectoryPoints{
+      std::string cmd;
+      double x, y, z, i, j;
+      bool has_i;
+      bool has_j;
+  };
+
+  std::vector<TrajectoryPoints> goal_array;  
   std::shared_ptr<moveit_visual_tools::MoveItVisualTools> visual_tools_;
   double x, y, z, qx, qy, qz, qw;
   bool moved_to_bed_ = false;
+  bool use_mock_hardware_ = true;
   Eigen::Quaterniond ee_orient;
+  std::vector<double> mid_point_array;
+  
 
   void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg) {
     x = msg->pose.position.x;
@@ -114,12 +133,128 @@ private:
     qw = msg->pose.orientation.w;
   }
 
+  std::vector<double> get_arc_center(std::vector<double> start, std::vector<double> end, std::vector<double> center, std::string command) {
+    // Calculate radius of circle
+    double radius = sqrt(pow(start.at(0) - center.at(0), 2) +
+                         pow(start.at(1) - center.at(1), 2) +
+                         pow(start.at(2) - center.at(2), 2));
+
+    double start_angle = atan2(start.at(1) - center.at(1), start.at(0) - center.at(0));
+    double end_angle = atan2(end.at(1) - center.at(1), end.at(0) - center.at(0));
+    double mid_angle;
+    double angle_diff;
+    std::vector<double> mid_point(3, 0.0);
+
+    if (command == "G2") { // Clockwise
+      angle_diff = start_angle - end_angle;
+      if (angle_diff <= 0) {
+        angle_diff += 2 * M_PI;        
+      }
+      mid_angle = start_angle - angle_diff / 2.0;      
+    } 
+    else if (command == "G3") { // Counterclockwise
+      angle_diff = end_angle - start_angle;
+      if (angle_diff <= 0) {
+        angle_diff += 2 * M_PI;
+      }
+      mid_angle = start_angle + angle_diff / 2.0;
+    }
+
+    mid_point.at(0) = center.at(0) + radius * cos(mid_angle);
+    mid_point.at(1) = center.at(1) + radius * sin(mid_angle);
+    mid_point.at(2) = center.at(2);
+
+    return mid_point;
+  }
+
+  void execute_with_trace(moveit::planning_interface::MoveGroupInterface::Plan& plan) {
+    if (use_mock_hardware_) {
+      // Mock hardware never publishes /joint_states during execution — use FK on plan waypoints
+      auto robot_state = std::make_shared<moveit::core::RobotState>(move_group_->getRobotModel());
+      const auto& jt = plan.trajectory.joint_trajectory;
+      std::vector<std::pair<double, geometry_msgs::msg::Point>> timed_points;
+      for (const auto& pt : jt.points) {
+        for (size_t j = 0; j < jt.joint_names.size(); j++) {
+          robot_state->setJointPositions(jt.joint_names[j], &pt.positions[j]);
+        }
+        robot_state->updateLinkTransforms();
+        const Eigen::Isometry3d& ee_tf = robot_state->getGlobalLinkTransform("link_6__flange");
+        // offset by -15mm along flange local Z so the trace sits at the outer face, not the joint center
+        Eigen::Vector3d tip = ee_tf.translation() + ee_tf.rotation() * Eigen::Vector3d(0, 0, -0.015);
+        double t = pt.time_from_start.sec + pt.time_from_start.nanosec * 1e-9;
+        geometry_msgs::msg::Point p;
+        p.x = tip.x();
+        p.y = tip.y();
+        p.z = tip.z();
+        timed_points.push_back({t, p});
+      }
+      std::thread tracer([this, timed_points]() {
+        auto exec_start = std::chrono::steady_clock::now();
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "world";
+        marker.ns = "ee_trace";  marker.id = 0;
+        marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.scale.x = 0.005;  marker.scale.y = 0.005;  marker.scale.z = 0.005;
+        marker.color.r = 0.0f;  marker.color.g = 1.0f;
+        marker.color.b = 0.0f;  marker.color.a = 1.0f;
+        marker.lifetime = rclcpp::Duration(0, 0);
+        for (const auto& [t, p] : timed_points) {
+          std::this_thread::sleep_until(exec_start + std::chrono::duration<double>(t));
+          trace_points_.push_back(p);
+          marker.header.stamp = this->now();
+          marker.points = trace_points_;
+          trace_pub_->publish(marker);
+        }
+      });
+      move_group_->execute(plan);
+      tracer.join();
+    } else {
+      // Real hardware: /joint_states updates live — poll getCurrentPose at 20 Hz
+      auto& pts = plan.trajectory.joint_trajectory.points;
+      double dur_sec = pts.empty() ? 5.0 :
+          pts.back().time_from_start.sec + pts.back().time_from_start.nanosec * 1e-9;
+      auto stop_time = std::chrono::steady_clock::now() +
+          std::chrono::duration<double>(dur_sec + 0.2);
+      std::thread tracer([this, stop_time]() {
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "world";
+        marker.ns = "ee_trace";  marker.id = 0;
+        marker.type = visualization_msgs::msg::Marker::SPHERE_LIST;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.scale.x = 0.005;  marker.scale.y = 0.005;  marker.scale.z = 0.005;
+        marker.color.r = 0.0f;  marker.color.g = 1.0f;
+        marker.color.b = 0.0f;  marker.color.a = 1.0f;
+        marker.lifetime = rclcpp::Duration(0, 0);
+        while (std::chrono::steady_clock::now() < stop_time) {
+          auto pose = move_group_->getCurrentPose("link_6__flange");
+          Eigen::Quaterniond q(pose.pose.orientation.w, pose.pose.orientation.x,
+                               pose.pose.orientation.y, pose.pose.orientation.z);
+          Eigen::Vector3d origin(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
+          // offset -15mm along flange local Z so the trace sits at the outer face
+          Eigen::Vector3d tip = origin + q.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.015);
+          geometry_msgs::msg::Point p;
+          p.x = tip.x();
+          p.y = tip.y();
+          p.z = tip.z();
+          trace_points_.push_back(p);
+          marker.header.stamp = this->now();
+          marker.points = trace_points_;
+          trace_pub_->publish(marker);
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+      });
+      move_group_->execute(plan);
+      tracer.join();
+    }
+  }
+
   void goal_callback(
     const std::shared_ptr<meca500_demo::srv::Goal::Request>  req,
           std::shared_ptr<meca500_demo::srv::Goal::Response> res) {
 
     goal_array.clear();
-    auto jmg = move_group_->getRobotModel()->getJointModelGroup("meca500_arm");
+    trace_points_.clear();
 
     // Parse gcode
     gcode::Program program = gcode::parse(req->gcode);
@@ -134,9 +269,16 @@ private:
     for (const auto& move : program.moves) {
         double pt_z = move.z / 1000.0; //to give a slight offset from the table surface
         if (pt_z < 0.001) pt_z = 0.001;
+
+        // X, Y, Z
         Eigen::Vector4d P_table(move.x / 1000.0, move.y / 1000.0, pt_z, 1.0);
-        Eigen::Vector4d P_robot = T * P_table;
-        goal_array.push_back({P_robot.x(), P_robot.y(), P_robot.z()});
+        Eigen::Vector4d P_robot = T * P_table;    
+        
+        // I, J
+        Eigen::Vector4d IJ_table(move.i / 1000.0, move.j / 1000.0, 0.0, 0.0);
+        Eigen::Vector4d IJ_robot = T * IJ_table;           
+        
+        goal_array.push_back({move.cmd, P_robot.x(), P_robot.y(), P_robot.z(), IJ_robot.x(), IJ_robot.y(), move.has_i, move.has_j});
     }
 
     res->success = true;
@@ -210,9 +352,7 @@ private:
         moveit::planning_interface::MoveGroupInterface::Plan plan;
         if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
           RCLCPP_INFO(this->get_logger(), "SUCCESS at t=%.2f! Executing...", t);
-          visual_tools_->publishTrajectoryLine(plan.trajectory, jmg);
-          visual_tools_->trigger();
-          move_group_->execute(plan);
+          execute_with_trace(plan);
           success = true;
           // Wait for state monitor to update
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -225,9 +365,10 @@ private:
       if (success) {
         geometry_msgs::msg::Pose target;
 
-        target.position.x = table_center.x();
-        target.position.y = table_center.y();
-        target.position.z = table_center.z();
+        Eigen::Vector3d table_tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.015);
+        target.position.x = table_center.x() + table_tool_offset.x();
+        target.position.y = table_center.y() + table_tool_offset.y();
+        target.position.z = table_center.z() + table_tool_offset.z();
         target.orientation.x = ee_orient.x();
         target.orientation.y = ee_orient.y();
         target.orientation.z = ee_orient.z();
@@ -242,41 +383,112 @@ private:
         moveit::planning_interface::MoveGroupInterface::Plan lin_to_table_plan;
         if (move_group_->plan(lin_to_table_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
           RCLCPP_INFO(this->get_logger(), "Planning to table surface SUCCESS! Executing...");
-          visual_tools_->publishTrajectoryLine(lin_to_table_plan.trajectory, jmg);
-          visual_tools_->trigger();
-          move_group_->execute(lin_to_table_plan);
+          execute_with_trace(lin_to_table_plan);
         }
         RCLCPP_INFO(this->get_logger(), "Reached table origin!");
       }
     }
 
     if (moved_to_bed_) {
+      // Inverse of marker offset: put the flange origin so the tip (-15mm along local Z) reaches the gcode coordinate
+      Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.015);
       for (size_t i = 0; i < goal_array.size(); i++) {
         geometry_msgs::msg::Pose target;
-        target.position.x = goal_array[i][0];
-        target.position.y = goal_array[i][1];
-        target.position.z = goal_array[i][2];
-        target.orientation.x = ee_orient.x();
-        target.orientation.y = ee_orient.y();
-        target.orientation.z = ee_orient.z();
-        target.orientation.w = ee_orient.w();
+        // If G1
+        if (goal_array.at(i).cmd == "G1") {
+          RCLCPP_INFO(this->get_logger(), "Planning G1 to point %zu: [%.3f, %.3f, %.3f]",
+          i, goal_array.at(i).x, goal_array.at(i).y, goal_array.at(i).z);
 
-        move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
-        move_group_->setPlannerId("LIN");
-        move_group_->setMaxVelocityScalingFactor(0.05);
-        move_group_->setMaxAccelerationScalingFactor(0.05);
-        move_group_->setPoseTarget(target, "link_6__flange");
+          target.position.x = goal_array.at(i).x + tool_offset.x();
+          target.position.y = goal_array.at(i).y + tool_offset.y();
+          target.position.z = goal_array.at(i).z + tool_offset.z();
+          target.orientation.x = ee_orient.x();
+          target.orientation.y = ee_orient.y();
+          target.orientation.z = ee_orient.z();
+          target.orientation.w = ee_orient.w();
 
-        moveit::planning_interface::MoveGroupInterface::Plan plan;
-        if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
-          RCLCPP_INFO(this->get_logger(), "LIN to point %zu SUCCESS", i);
-          visual_tools_->publishTrajectoryLine(plan.trajectory, jmg);
-          visual_tools_->trigger();
-          move_group_->execute(plan);
-        } else {
-          RCLCPP_ERROR(this->get_logger(), "LIN to point %zu FAILED", i);
-          res->success = false;
-          return;
+          move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
+          move_group_->setPlannerId("LIN");
+          move_group_->setMaxVelocityScalingFactor(0.05);
+          move_group_->setMaxAccelerationScalingFactor(0.05);
+          move_group_->setPoseTarget(target, "link_6__flange");
+  
+          moveit::planning_interface::MoveGroupInterface::Plan plan;
+          if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+            RCLCPP_INFO(this->get_logger(), "LIN to point %zu SUCCESS", i);
+            execute_with_trace(plan);
+          } else {
+            RCLCPP_ERROR(this->get_logger(), "LIN to point %zu FAILED", i);
+            res->success = false;
+            return;
+          }
+        }
+        // if G2 or G3
+        else if (goal_array.at(i).cmd == "G2" || goal_array.at(i).cmd == "G3") {
+          RCLCPP_INFO(this->get_logger(), "Planning %s to point %zu: [%.3f, %.3f, %.3f] with center offset [%.3f, %.3f]",
+          goal_array.at(i).cmd.c_str(), i, goal_array.at(i).x, goal_array.at(i).y, goal_array.at(i).z,
+          goal_array.at(i).i, goal_array.at(i).j);
+          
+          // Use previous goal position as arc start (getCurrentPose unreliable after mock hardware execution)
+          double start_x = (i > 0) ? goal_array.at(i-1).x + tool_offset.x() : move_group_->getCurrentPose("link_6__flange").pose.position.x;
+          double start_y = (i > 0) ? goal_array.at(i-1).y + tool_offset.y() : move_group_->getCurrentPose("link_6__flange").pose.position.y;
+          double start_z = (i > 0) ? goal_array.at(i-1).z + tool_offset.z() : move_group_->getCurrentPose("link_6__flange").pose.position.z;
+
+          // Get center of the circle in robot frame
+          geometry_msgs::msg::PoseStamped center;
+          center.header.frame_id = "world";
+          center.pose.position.x = start_x + goal_array.at(i).i;
+          center.pose.position.y = start_y + goal_array.at(i).j;
+          center.pose.position.z = start_z;
+
+          // Compute interim point (arc midpoint) then set path constraint
+          mid_point_array = get_arc_center({start_x, start_y, start_z},
+                                          {goal_array.at(i).x + tool_offset.x(), goal_array.at(i).y + tool_offset.y(), goal_array.at(i).z + tool_offset.z()},
+                                          {center.pose.position.x, center.pose.position.y, center.pose.position.z},
+                                          goal_array.at(i).cmd);
+          geometry_msgs::msg::Pose interim_pose;
+          interim_pose.position.x = mid_point_array.at(0);
+          interim_pose.position.y = mid_point_array.at(1);
+          interim_pose.position.z = mid_point_array.at(2);
+
+          moveit_msgs::msg::Constraints constraints;
+          constraints.name = "interim";
+          moveit_msgs::msg::PositionConstraint pos_constraint;
+          pos_constraint.header.frame_id = "world";
+          pos_constraint.link_name = "link_6__flange";
+          pos_constraint.constraint_region.primitive_poses.push_back(interim_pose);
+          pos_constraint.weight = 1.0;
+          constraints.position_constraints.push_back(pos_constraint);
+          move_group_->setPathConstraints(constraints);         
+
+
+  
+          target.position.x = goal_array.at(i).x + tool_offset.x();
+          target.position.y = goal_array.at(i).y + tool_offset.y();
+          target.position.z = goal_array.at(i).z + tool_offset.z();
+          target.orientation.x = ee_orient.x();
+          target.orientation.y = ee_orient.y();
+          target.orientation.z = ee_orient.z();
+          target.orientation.w = ee_orient.w();
+
+          move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
+          move_group_->setPlannerId("CIRC");
+          move_group_->setPlanningTime(10.0);
+          move_group_->setMaxVelocityScalingFactor(0.05);
+          move_group_->setMaxAccelerationScalingFactor(0.05);
+          move_group_->setPoseTarget(target, "link_6__flange");
+
+          moveit::planning_interface::MoveGroupInterface::Plan plan;
+          if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+            RCLCPP_INFO(this->get_logger(), "%s to point %zu SUCCESS", goal_array.at(i).cmd.c_str(), i);
+            execute_with_trace(plan);
+          } else {
+            RCLCPP_ERROR(this->get_logger(), "%s to point %zu FAILED", goal_array.at(i).cmd.c_str(), i);
+            res->success = false;
+            move_group_->clearPathConstraints();
+            return;
+          }
+          move_group_->clearPathConstraints();
         }
       }
     }
@@ -288,7 +500,7 @@ int main(int argc, char * argv[])
   rclcpp::init(argc, argv);
   auto node = std::make_shared<Meca500Trajectory>();
 
-  rclcpp::executors::SingleThreadedExecutor executor;
+  rclcpp::executors::MultiThreadedExecutor executor(rclcpp::ExecutorOptions(), 2);
   executor.add_node(node);
   std::thread spinner([&executor]() { executor.spin(); });
 

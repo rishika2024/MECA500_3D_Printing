@@ -14,8 +14,10 @@ Panels:
         - /Marker1
         - /Marker2
         - /Marker3
+        - /RobotModel1
+        - /Marker4
       Splitter Ratio: 0.5
-    Tree Height: 164
+    Tree Height: 162
   - Class: rviz_common/Help
     Name: Help
   - Class: rviz_common/Views
@@ -116,7 +118,7 @@ Visualization Manager:
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
         Show Robot Collision: false
-        Show Robot Visual: false
+        Show Robot Visual: true
         Show Trail: false
         State Display Time: 0.05 s
         Trail Step Size: 1
@@ -249,6 +251,80 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /perpendicular_marker
       Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        link_0__base:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_1:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_2:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_3:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_4:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_5:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        link_6__flange:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Mass Properties:
+        Inertia: false
+        Mass: false
+      Name: RobotModel
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /ee_trace
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -282,10 +358,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.039999913424253464
+      Pitch: -0.009999895468354225
       Target Frame: link_0__base
       Value: Orbit (rviz_default_plugins)
-      Yaw: 0.08199603855609894
+      Yaw: 6.155176162719727
     Saved: ~
 Window Geometry:
   Displays:
@@ -299,7 +375,7 @@ Window Geometry:
     collapsed: false
   MotionPlanning - Trajectory Slider:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002b400000371fc0200000006fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073010000003f000000e4000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000129000001c80000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a0056006900650077007301000002f7000000b9000000a900fffffffb00000024005200760069007a00560069007300750061006c0054006f006f006c0073004700750069000000036c000000440000004400ffffff000001f60000037100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b400000371fc0200000006fb00000044004d006f00740069006f006e0050006c0061006e006e0069006e00670020002d0020005400720061006a006500630074006f0072007900200053006c00690064006500720000000000ffffffff0000004400fffffffb000000100044006900730070006c006100790073010000003f000000e2000000cc00fffffffb0000001c004d006f00740069006f006e0050006c0061006e006e0069006e00670100000127000001da0000019600fffffffb0000000800480065006c0070000000029a0000006e0000006f00fffffffb0000000a005600690065007700730100000307000000a9000000a900fffffffb00000024005200760069007a00560069007300750061006c0054006f006f006c0073004700750069000000036c000000440000004400ffffff000001f60000037100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RvizVisualToolsGui:
     collapsed: false
   Views:

@@ -47,4 +47,11 @@ ament_export_targets(gcodeTargets HAS_LIBRARY_TARGET)
 ament_export_include_directories(include)
 ament_export_dependencies(ament_cmake)
 
+if(BUILD_TESTING)
+  find_package(Catch2 REQUIRED)
+  add_executable(test_parser test/test_parser.cpp)
+  target_link_libraries(test_parser PRIVATE gcode Catch2::Catch2WithMain)
+  add_test(NAME test_parser COMMAND test_parser)
+endif()
+
 ament_package()

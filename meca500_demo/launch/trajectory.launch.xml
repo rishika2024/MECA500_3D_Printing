@@ -11,6 +11,7 @@
 
     <node pkg='meca500_demo' exec='trajectory'>
         <param from='$(find-pkg-share meca500_demo)/config/trajectory_kinematics.yaml'/>
+        <param name='use_mock_hardware' value='$(var use_mock_hardware)'/>
     </node>
         
 

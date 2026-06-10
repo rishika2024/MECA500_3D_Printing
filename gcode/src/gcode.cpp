@@ -29,6 +29,14 @@ namespace gcode
             else if (letter == 'Z') {
                 move.z = std::stod(value);
             }
+            else if (letter == 'I') {
+                move.i = std::stod(value);
+                move.has_i = true;
+            }
+            else if (letter == 'J') {
+                move.j = std::stod(value);
+                move.has_j = true;
+            }             
         }
 
         return move;

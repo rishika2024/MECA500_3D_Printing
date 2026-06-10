@@ -13,6 +13,10 @@ namespace gcode
         double x = 0.0;
         double y = 0.0;
         double z = 0.0;
+        double i = 0.0;
+        double j = 0.0;
+        bool has_i = false;
+        bool has_j = false;
     };
 
     struct Program

@@ -85,8 +85,8 @@ private:
       table.scale.x = 0.5;
       table.scale.y = 0.5;
       table.scale.z = 0.001;
-      table.color.r = 0.8f;
-      table.color.g = 0.8f;
+      table.color.r = 0.9f;
+      table.color.g = 0.9f;
       table.color.b = 0.8f;
       table.color.a = 1.0f;  
       

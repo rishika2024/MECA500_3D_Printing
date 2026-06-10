@@ -49,6 +49,7 @@ target_link_libraries(trajectory PUBLIC
   rclcpp_action::rclcpp_action
   ${std_msgs_TARGETS}
   ${geometry_msgs_TARGETS}
+  ${shape_msgs_TARGETS}
   ${visualization_msgs_TARGETS}
   ${control_msgs_TARGETS}
   ${moveit_msgs_TARGETS}
