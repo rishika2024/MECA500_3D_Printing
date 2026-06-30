@@ -15,8 +15,15 @@ namespace gcode
         double z = 0.0;
         double i = 0.0;
         double j = 0.0;
+        double e = 0.0;
+        double f = 0.0;
+        bool has_x = false;
+        bool has_y = false;
+        bool has_z = false;
         bool has_i = false;
         bool has_j = false;
+        bool has_e = false;
+        bool has_f = false;
     };
 
     struct Program

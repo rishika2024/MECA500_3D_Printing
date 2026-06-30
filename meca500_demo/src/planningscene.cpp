@@ -16,12 +16,12 @@ public:
   : Node("meca500_planning_scene")
   {
     this->declare_parameter("x", 0.0);  
-    this->declare_parameter("y", 0.20);
-    this->declare_parameter("z", 0.0);
-    this->declare_parameter("qx", 0.321);
-    this->declare_parameter("qy", -0.537);
-    this->declare_parameter("qz", 0.721);
-    this->declare_parameter("qw", 0.284);
+    this->declare_parameter("y", 0.2);
+    this->declare_parameter("z", 0.00);
+    this->declare_parameter("qx", 0.0);
+    this->declare_parameter("qy", 0.0);
+    this->declare_parameter("qz", 0.0);
+    this->declare_parameter("qw", 1.0);
 
     // Give the planning scene interface time to connect to move_group
     rclcpp::sleep_for(500ms);
@@ -82,8 +82,8 @@ private:
       table.pose.orientation.y = this->get_parameter("qy").as_double();
       table.pose.orientation.z = this->get_parameter("qz").as_double();
       table.pose.orientation.w = this->get_parameter("qw").as_double();
-      table.scale.x = 0.5;
-      table.scale.y = 0.5;
+      table.scale.x = 0.33;
+      table.scale.y = 0.33;
       table.scale.z = 0.001;
       table.color.r = 0.9f;
       table.color.g = 0.9f;

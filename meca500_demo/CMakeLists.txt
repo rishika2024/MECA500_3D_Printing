@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(shape_msgs REQUIRED)
@@ -25,6 +26,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/Table.srv"
   "srv/Goal.srv"
+  "srv/GcodeFile.srv"
 )
 
 # ── planningscene node ───
@@ -37,6 +39,8 @@ target_link_libraries(planningscene PUBLIC
   ${shape_msgs_TARGETS}
   ${moveit_msgs_TARGETS}
   moveit_ros_planning_interface::moveit_planning_scene_interface
+  moveit_ros_planning_interface::moveit_move_group_interface
+  Eigen3::Eigen
   ${cpp_typesupport_target}
 )
 
@@ -48,6 +52,7 @@ target_link_libraries(trajectory PUBLIC
   rclcpp::rclcpp
   rclcpp_action::rclcpp_action
   ${std_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
   ${geometry_msgs_TARGETS}
   ${shape_msgs_TARGETS}
   ${visualization_msgs_TARGETS}
@@ -60,6 +65,17 @@ target_link_libraries(trajectory PUBLIC
   ${cpp_typesupport_target}
 )
 install(TARGETS trajectory DESTINATION lib/${PROJECT_NAME})
+
+# ── reachability node ───
+add_executable(reachability src/reachability.cpp)
+target_link_libraries(reachability PUBLIC
+  rclcpp::rclcpp
+  ${geometry_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
+  moveit_ros_planning_interface::moveit_move_group_interface
+  Eigen3::Eigen
+)
+install(TARGETS reachability DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
 
