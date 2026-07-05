@@ -1,0 +1,256 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape https://cad.onshape.com/documents/0427f697374fea076d1b19d0/w/ebacd5e6d06ed8cf5bc37033/e/ab0f66ae85f1418c675ddcf3 -->
+<robot name="meca500_with_extruder">
+  <!-- Link e_plate -->
+  <link name="e_plate">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="1e-09"/>
+      <inertia ixx="1e-09" ixy="0" ixz="0" iyy="1e-09" iyz="0" izz="1e-09"/>
+    </inertial>
+    <!-- Part link_6__flange -->
+    <visual>
+      <origin xyz="-0.0608105 0.020405 0.170838" rpy="-3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/link_6__flange.stl"/>
+      </geometry>
+      <material name="link_6__flange_material">
+        <color rgba="0.74902 0.74902 0.74902 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0608105 0.020405 0.170838" rpy="-3.14159 0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/link_6__flange.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part e_plate -->
+    <visual>
+      <origin xyz="0.0320431 0.223573 0.235887" rpy="-1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://meshes/e_plate.stl"/>
+      </geometry>
+      <material name="e_plate_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0320431 0.223573 0.235887" rpy="-1.5708 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://meshes/e_plate.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3x10_pan_head_screw -->
+    <!-- Part m2x10杯头 -->
+    <!-- Part m3x10_pan_head_screw_2 -->
+    <!-- Part m3x10_pan_head_screw_3 -->
+    <!-- Part m2x8_socket_head_screw -->
+    <!-- Part cold_section_fan -->
+    <visual>
+      <origin xyz="0.241265 0.168418 0.4476" rpy="3.14159 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://meshes/cold_section_fan.stl"/>
+      </geometry>
+      <material name="cold_section_fan_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.241265 0.168418 0.4476" rpy="3.14159 -0 3.14159"/>
+      <geometry>
+        <mesh filename="package://meshes/cold_section_fan.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3x6pan_head_screw -->
+    <!-- Part m3x6pan_head_screw_2 -->
+    <!-- Part fan_cover -->
+    <visual>
+      <origin xyz="0.0245431 0.233923 0.280387" rpy="1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/fan_cover.stl"/>
+      </geometry>
+      <material name="fan_cover_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0245431 0.233923 0.280387" rpy="1.5708 0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/fan_cover.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part nozzle_fan_duct -->
+    <visual>
+      <origin xyz="-0.00414582 0.252518 0.257822" rpy="0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle_fan_duct.stl"/>
+      </geometry>
+      <material name="nozzle_fan_duct_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.00414582 0.252518 0.257822" rpy="0 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle_fan_duct.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m2x10杯头_2 -->
+    <!-- Part nozzle_fan -->
+    <visual>
+      <origin xyz="0.0142169 0.341315 0.29699" rpy="-2.53073 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle_fan.stl"/>
+      </geometry>
+      <material name="nozzle_fan_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0142169 0.341315 0.29699" rpy="-2.53073 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle_fan.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3x10_pan_head_screw_4 -->
+    <!-- Part m2x8_socket_head_screw_2 -->
+    <!-- Part catheter -->
+    <visual>
+      <origin xyz="0.0607788 0.365373 0.358987" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/catheter.stl"/>
+      </geometry>
+      <material name="catheter_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0607788 0.365373 0.358987" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/catheter.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part radiator -->
+    <visual>
+      <origin xyz="0.0155431 0.216023 0.247387" rpy="3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/radiator.stl"/>
+      </geometry>
+      <material name="radiator_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0155431 0.216023 0.247387" rpy="3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/radiator.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3_screw -->
+    <!-- Part m3_split_washer -->
+    <!-- Part m3_split_washer_2 -->
+    <!-- Part nozzle -->
+    <visual>
+      <origin xyz="0.0155431 0.254523 0.247387" rpy="-0 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle.stl"/>
+      </geometry>
+      <material name="nozzle_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0155431 0.254523 0.247387" rpy="-0 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3x16_pan_head_screw -->
+    <!-- Part m3x4_screw -->
+    <!-- Part m3_18_flush_head_screw -->
+    <!-- Part m3_screw_2 -->
+    <!-- Part d4_teflon_tube -->
+    <visual>
+      <origin xyz="0.0155431 0.244523 0.247387" rpy="1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/d4_teflon_tube.stl"/>
+      </geometry>
+      <material name="d4_teflon_tube_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0155431 0.244523 0.247387" rpy="1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/d4_teflon_tube.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part pneumatic_joint -->
+    <visual>
+      <origin xyz="0.0155431 0.206523 0.247387" rpy="3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/pneumatic_joint.stl"/>
+      </geometry>
+      <material name="pneumatic_joint_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0155431 0.206523 0.247387" rpy="3.14159 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/pneumatic_joint.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3x16_pan_head_screw_2 -->
+    <!-- Part heat_block -->
+    <visual>
+      <origin xyz="0.0155431 0.254523 0.251387" rpy="0 -0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/heat_block.stl"/>
+      </geometry>
+      <material name="heat_block_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0155431 0.254523 0.251387" rpy="0 -0 -0"/>
+      <geometry>
+        <mesh filename="package://meshes/heat_block.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part heater -->
+    <visual>
+      <origin xyz="0.00554307 0.249523 0.256887" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/heater.stl"/>
+      </geometry>
+      <material name="heater_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.00554307 0.249523 0.256887" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/heater.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part m3_18_flush_head_screw_2 -->
+    <!-- Part nozzle_thermistor -->
+    <visual>
+      <origin xyz="0.00724307 0.252523 0.249887" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle_thermistor.stl"/>
+      </geometry>
+      <material name="nozzle_thermistor_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.00724307 0.252523 0.249887" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://meshes/nozzle_thermistor.stl"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
