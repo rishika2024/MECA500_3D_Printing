@@ -397,7 +397,7 @@ private:
     Eigen::Quaterniond q_table(qw, qx, qy, qz); // table orientation
     Eigen::Vector3d t_table(x, y, z); // table position
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-    T.block<3,3>(0,0) = q_table.normalized().toRotationMatrix();  // rotation part
+    T.block<3,3>(0,0) = q_table.toRotationMatrix();  // rotation part
     T.block<3,1>(0,3) = t_table;    // translation part
 
     for (const auto& move : program.moves) {
@@ -425,7 +425,7 @@ private:
     res->success = true;
 
     // getting the table's normal vector and center position in the robot frame
-    Eigen::Matrix3d R_table = q_table.normalized().toRotationMatrix(); // rotation matrix of the table
+    Eigen::Matrix3d R_table = q_table.toRotationMatrix(); // rotation matrix of the table
     Eigen::Vector3d table_center(x, y, z); // center of the table
     Eigen::Vector3d table_normal = R_table.col(2);
 

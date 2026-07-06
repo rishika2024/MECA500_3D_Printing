@@ -6,6 +6,7 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include "meca500_demo/srv/table.hpp"
+#include <Eigen/Dense>
 
 using namespace std::chrono_literals;
 
@@ -68,6 +69,12 @@ private:
   }
 
   void timer_callback() {
+    Eigen::Quaterniond q(
+    this->get_parameter("qw").as_double(),
+    this->get_parameter("qx").as_double(),
+    this->get_parameter("qy").as_double(),
+    this->get_parameter("qz").as_double());
+    q.normalize();
      visualization_msgs::msg::Marker table;
       table.header.frame_id = "world";
       table.header.stamp = this->get_clock()->now();
@@ -78,10 +85,10 @@ private:
       table.pose.position.x = this->get_parameter("x").as_double();
       table.pose.position.y = this->get_parameter("y").as_double();
       table.pose.position.z = this->get_parameter("z").as_double();
-      table.pose.orientation.x = this->get_parameter("qx").as_double();
-      table.pose.orientation.y = this->get_parameter("qy").as_double();
-      table.pose.orientation.z = this->get_parameter("qz").as_double();
-      table.pose.orientation.w = this->get_parameter("qw").as_double();
+      table.pose.orientation.x = q.x();
+      table.pose.orientation.y = q.y();
+      table.pose.orientation.z = q.z();
+      table.pose.orientation.w = q.w();
       table.scale.x = 0.33;
       table.scale.y = 0.33;
       table.scale.z = 0.001;

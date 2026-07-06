@@ -125,8 +125,7 @@ private:
     double z_off = this->get_parameter("z_offset").as_double();
     std::string out_file = this->get_parameter("out_file").as_string();
 
-    Eigen::Quaterniond q_table(qw, qx, qy, qz);
-    q_table.normalize();
+    Eigen::Quaterniond q_table(qw, qx, qy, qz);    
     Eigen::Vector3d t_table(tx, ty, tz);
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
     T.block<3,3>(0,0) = q_table.toRotationMatrix();
