@@ -16,14 +16,7 @@ class ReachabilityMap : public rclcpp::Node
 public:
   ReachabilityMap()
   : Node("reachability_map_node")
-  {
-    this->declare_parameter("table_x", 0.0);
-    this->declare_parameter("table_y", 0.120);
-    this->declare_parameter("table_z", 0.0);
-    this->declare_parameter("table_qx", 0.0);
-    this->declare_parameter("table_qy", 0.0);
-    this->declare_parameter("table_qz", 0.0);
-    this->declare_parameter("table_qw", 1.0);
+  {    
     this->declare_parameter("edge_length", 0.33);
     this->declare_parameter("grid_n", 11);
     this->declare_parameter("z_offset", 0.001);
@@ -32,6 +25,16 @@ public:
 
   void init()
   {
+     // Subscriber
+    RCLCPP_INFO(this->get_logger(), "Ready. Waiting for G-code...");
+
+    table_pos_sub = this->create_subscription<visualization_msgs::msg::Marker>(
+      "table_marker", 10,
+      [this](const visualization_msgs::msg::Marker::SharedPtr msg) {
+        table_callback(msg);
+      }
+    );
+
     using moveit::planning_interface::MoveGroupInterface;
     move_group_ = std::make_shared<MoveGroupInterface>(shared_from_this(), "meca500_arm");
     move_group_->startStateMonitor(3.0);
@@ -39,14 +42,44 @@ public:
     marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
       "reachability_dots", rclcpp::QoS(1).transient_local());
 
+    RCLCPP_INFO(this->get_logger(), "Waiting for table_marker...");
+    auto wait_start = std::chrono::steady_clock::now();
+    while (rclcpp::ok() && !table_pose_received_ &&
+           std::chrono::steady_clock::now() - wait_start < std::chrono::seconds(3)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    if (!table_pose_received_) {
+      RCLCPP_WARN(this->get_logger(),
+        "No table_marker received after 3s, using default table pose");
+    }
+
     run_sweep();
   }
 
 private:
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr table_pos_sub;
+  double tx = 0.0, ty = 0.2, tz = 0.0, qx = 0.0, qy = 0.0, qz = 0.0, qw = 1.0;
+  bool table_pose_received_ = false;
+
 
   struct ReachPt { double lx, ly, rx, ry, rz; };
+
+  bool finished = false;
+  bool shutdown_requested = false;
+
+  void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg) {
+    tx = msg->pose.position.x;
+    ty = msg->pose.position.y;
+    tz = msg->pose.position.z;
+    qx = msg->pose.orientation.x;
+    qy = msg->pose.orientation.y;
+    qz = msg->pose.orientation.z;
+    qw = msg->pose.orientation.w;
+    table_pose_received_ = true;
+  }
+
 
   bool plan_ompl(const geometry_msgs::msg::Pose& target)
   {
@@ -86,13 +119,7 @@ private:
 
   void run_sweep()
   {
-    double tx = this->get_parameter("table_x").as_double();
-    double ty = this->get_parameter("table_y").as_double();
-    double tz = this->get_parameter("table_z").as_double();
-    double qx = this->get_parameter("table_qx").as_double();
-    double qy = this->get_parameter("table_qy").as_double();
-    double qz = this->get_parameter("table_qz").as_double();
-    double qw = this->get_parameter("table_qw").as_double();
+    
     double edge = this->get_parameter("edge_length").as_double();
     int grid_n = this->get_parameter("grid_n").as_int();
     double z_off = this->get_parameter("z_offset").as_double();
@@ -159,6 +186,8 @@ private:
         "approach FAILED: cannot reach any standoff pose above the board.");
       return;
     }
+
+    // ################################ BEGIN CITATION [] ######################################
 
     // LIN down to the surface center, same as trajectory.cpp
     {
@@ -240,7 +269,8 @@ private:
       std::ofstream f(out_file);
       if (!f.is_open()) {
         RCLCPP_ERROR(this->get_logger(), "Could not open %s for writing", out_file.c_str());
-      } else {
+      }
+      else {
         f << "idx,local_x,local_y,robot_x,robot_y,robot_z\n";
         for (size_t k = 0; k < reachable_pts.size(); k++) {
           const auto& p = reachable_pts[k];
@@ -249,8 +279,37 @@ private:
         }
         f.close();
         RCLCPP_INFO(this->get_logger(), "Wrote %zu reachable points to %s",
-          reachable_pts.size(), out_file.c_str());
+          reachable_pts.size(), out_file.c_str());        
       }
+    }
+    // ################################ END CITATION [] ######################################
+
+    finished = true;
+
+    if (finished) {
+      RCLCPP_INFO(this->get_logger(), "Sweep finished, going back to home position");
+      move_group_->setPlanningPipelineId("ompl");
+      move_group_->setPlannerId("RRTConnect");
+      move_group_->setPlanningTime(5.0);
+      move_group_->setMaxVelocityScalingFactor(0.5);
+      move_group_->setMaxAccelerationScalingFactor(0.5);
+      move_group_->clearPoseTargets();
+      move_group_->setNamedTarget("Home");
+
+      moveit::planning_interface::MoveGroupInterface::Plan plan;
+      if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+        move_group_->execute(plan);
+      }
+      else {
+        RCLCPP_WARN(this->get_logger(), "Could not plan to home position");      
+      }
+      shutdown_requested = true;
+    }
+
+    if (shutdown_requested) {
+      RCLCPP_INFO(this->get_logger(), "Shutting down ROS after reachability sweep");
+      rclcpp::shutdown();
+      return;
     }
   }
 };

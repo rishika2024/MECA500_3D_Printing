@@ -24,6 +24,11 @@ install(
 )
 
 install(
+  PROGRAMS src/gcode_parser.py
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
   EXPORT gcodeTargets
   FILE gcodeTargets.cmake
   NAMESPACE gcode::

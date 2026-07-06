@@ -32,7 +32,7 @@ public:
          rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
   {}
 
-  // Called from main after the executor is spinning
+  
   void init() {
 
     using moveit::planning_interface::MoveGroupInterface;
@@ -142,7 +142,7 @@ private:
   bool is_print = false;
   int print_seg_id_ = 0;
 
-
+  // Table Callback
   void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg) {
     x = msg->pose.position.x;
     y = msg->pose.position.y;
@@ -152,9 +152,10 @@ private:
     qz = msg->pose.orientation.z;
     qw = msg->pose.orientation.w;
   }
-
+  
+  // Calculate the midpoint of an arc given the start, end, and center points, and the command (G2 or G3)
   std::vector<double> get_arc_center(std::vector<double> start, std::vector<double> end, std::vector<double> center, std::string command) {
-    // Calculate radius of circle
+    
     double radius = sqrt(pow(start.at(0) - center.at(0), 2) +
                          pow(start.at(1) - center.at(1), 2) +
                          pow(start.at(2) - center.at(2), 2));
@@ -188,9 +189,9 @@ private:
 
     return mid_point;
   }
-
-  double f_scaling(double f, bool has_f) {
-    // Scale feed rate to be between 0.1 and 0.5
+  
+  // Function to scale feed rate
+  double f_scaling(double f, bool has_f) {    
     double min_f = 1.0; // mm/min
     double max_f = 500.0; // mm/min
 
@@ -208,7 +209,8 @@ private:
       return 0.1;
     }
   }
-
+  
+  // Function to execute a trajectory plan and trace the end-effector path
   void execute_with_trace(moveit::planning_interface::MoveGroupInterface::Plan& plan, bool is_print) {
     if (use_mock_hardware_) {
       // Mock hardware never publishes /joint_states during execution — use FK on plan waypoints
@@ -341,7 +343,8 @@ private:
       tracer.join();
     }
   }
-
+  
+  
   void gcode_file_callback(
       const std::shared_ptr<meca500_demo::srv::GcodeFile::Request>  req,
             std::shared_ptr<meca500_demo::srv::GcodeFile::Response> res)
@@ -374,7 +377,13 @@ private:
       res->message  = goal_res->success ? "OK" : "goal_callback failed";
       res->moves_sent = static_cast<int32_t>(goal_array.size());
     }
-
+  
+  // This function creates a table pose matrix from the table's position and orientation parameters
+  // and then uses it to transform G-code coordinates from the table frame to the robot frame. 
+  // It also computes the end-effector orientation based on the table's normal vector, ensuring that 
+  // the end-effector approaches the table perpendicularly. The function then plans and executes a 
+  // trajectory for each G-code move, handling both linear and arc movements, and scales the feed rate as necessary.
+  
   void goal_callback(
     const std::shared_ptr<meca500_demo::srv::Goal::Request>  req,
           std::shared_ptr<meca500_demo::srv::Goal::Response> res) {
@@ -583,112 +592,109 @@ private:
         }
         // if G2 or G3
         else if (goal_array.at(i).cmd == "G2" || goal_array.at(i).cmd == "G3") {
-  if (goal_array.at(i).has_e && goal_array.at(i).e > 1e-6) {
-    if (!is_print) {
-      print_trace_points_.clear();
-      print_seg_id_++;
-    }
-    is_print = true;
-  }
+          if (goal_array.at(i).has_e && goal_array.at(i).e > 1e-6) {
+            if (!is_print) {
+              print_trace_points_.clear();
+              print_seg_id_++;
+            }
+            is_print = true;
+          }
 
-  RCLCPP_INFO(this->get_logger(), "Planning %s to point %zu: [%.3f, %.3f, %.3f] with center offset [%.3f, %.3f]",
-    goal_array.at(i).cmd.c_str(), i,
-    goal_array.at(i).x, goal_array.at(i).y, goal_array.at(i).z,
-    goal_array.at(i).i, goal_array.at(i).j);
+          RCLCPP_INFO(this->get_logger(), "Planning %s to point %zu: [%.3f, %.3f, %.3f] with center offset [%.3f, %.3f]",
+            goal_array.at(i).cmd.c_str(), i,
+            goal_array.at(i).x, goal_array.at(i).y, goal_array.at(i).z,
+            goal_array.at(i).i, goal_array.at(i).j);
 
-  auto current_pose = move_group_->getCurrentPose("link_6__flange").pose;
-  double start_x = current_pose.position.x;
-  double start_y = current_pose.position.y;
-  double start_z = current_pose.position.z;
+          auto current_pose = move_group_->getCurrentPose("link_6__flange").pose;
+          double start_x = current_pose.position.x;
+          double start_y = current_pose.position.y;
+          double start_z = current_pose.position.z;
 
-  // target is now declared above the if/else block so it's valid here
-  geometry_msgs::msg::PoseStamped center;
-  center.header.frame_id = "world";
-  center.pose.position.x = start_x + goal_array.at(i).i;
-  center.pose.position.y = start_y + goal_array.at(i).j;
-  center.pose.position.z = start_z;
+          // target is now declared above the if/else block so it's valid here
+          geometry_msgs::msg::PoseStamped center;
+          center.header.frame_id = "world";
+          center.pose.position.x = start_x + goal_array.at(i).i;
+          center.pose.position.y = start_y + goal_array.at(i).j;
+          center.pose.position.z = start_z;
 
-  double r_start = std::hypot(start_x - center.pose.position.x,
-                               start_y - center.pose.position.y);
-  double r_end   = std::hypot(target.position.x - center.pose.position.x,
-                               target.position.y - center.pose.position.y);
+          double r_start = std::hypot(start_x - center.pose.position.x,
+                                       start_y - center.pose.position.y);
+          double r_end   = std::hypot(target.position.x - center.pose.position.x,
+                                       target.position.y - center.pose.position.y);
 
-  RCLCPP_INFO(get_logger(), "r_start=%.6f r_end=%.6f diff=%.9f",
-    r_start, r_end, fabs(r_start - r_end));
+          RCLCPP_INFO(get_logger(), "r_start=%.6f r_end=%.6f diff=%.9f",
+            r_start, r_end, fabs(r_start - r_end));
 
-  // FIX: call get_arc_center BEFORE using mid_point_array
-  mid_point_array = get_arc_center(
-    {start_x, start_y, start_z},
-    {target.position.x, target.position.y, target.position.z},
-    {center.pose.position.x, center.pose.position.y, center.pose.position.z},
-    goal_array.at(i).cmd);
+          // FIX: call get_arc_center BEFORE using mid_point_array
+          mid_point_array = get_arc_center(
+            {start_x, start_y, start_z},
+            {target.position.x, target.position.y, target.position.z},
+            {center.pose.position.x, center.pose.position.y, center.pose.position.z},
+            goal_array.at(i).cmd);
 
-  // Now safe to use mid_point_array
-  Eigen::Vector3d a(start_x, start_y, start_z);
-  Eigen::Vector3d b(mid_point_array[0], mid_point_array[1], mid_point_array[2]);
-  Eigen::Vector3d c(target.position.x, target.position.y, target.position.z);
-  
+          // Now safe to use mid_point_array
+          Eigen::Vector3d a(start_x, start_y, start_z);
+          Eigen::Vector3d b(mid_point_array[0], mid_point_array[1], mid_point_array[2]);
+          Eigen::Vector3d c(target.position.x, target.position.y, target.position.z);
 
-  
+          // cross product norm = 2 * triangle area = same check Pilz uses internally
+          // threshold 2.5e-11 = 5µm × 5µm = robot resolution limit
+          double cross_norm = ((b - a).cross(c - a)).norm();
 
-   // cross product norm = 2 * triangle area = same check Pilz uses internally
-  // threshold 2.5e-11 = 5µm × 5µm = robot resolution limit
-  double cross_norm = ((b - a).cross(c - a)).norm();
+          if (cross_norm < 2.5e-11) {
+            RCLCPP_WARN(this->get_logger(),
+              "Point %zu: arc below robot resolution (cross_norm=%.2e), planning as LIN", i, cross_norm);
+            // demote to G1, don't erase: the robot still needs to reach this position
+            goal_array.at(i).cmd = "G1";
+            goal_array.at(i).has_i = false;
+            goal_array.at(i).has_j = false;
+            // fall back to G1 branch on next iteration of same index
+            i--;
+            continue;
+          }
+          geometry_msgs::msg::Pose interim_pose;
+          interim_pose.position.x = mid_point_array.at(0);
+          interim_pose.position.y = mid_point_array.at(1);
+          interim_pose.position.z = mid_point_array.at(2);
 
-  if (cross_norm < 2.5e-11) {
-    RCLCPP_WARN(this->get_logger(),
-      "Point %zu: arc below robot resolution (cross_norm=%.2e), planning as LIN", i, cross_norm);
-    // demote to G1, don't erase: the robot still needs to reach this position
-    goal_array.at(i).cmd = "G1";
-    goal_array.at(i).has_i = false;
-    goal_array.at(i).has_j = false;
-    // fall back to G1 branch on next iteration of same index
-    i--;
-    continue;
-  }
-  geometry_msgs::msg::Pose interim_pose;
-  interim_pose.position.x = mid_point_array.at(0);
-  interim_pose.position.y = mid_point_array.at(1);
-  interim_pose.position.z = mid_point_array.at(2);
+          moveit_msgs::msg::Constraints constraints;
+          constraints.name = "interim";
+          moveit_msgs::msg::PositionConstraint pos_constraint;
+          pos_constraint.header.frame_id = "world";
+          pos_constraint.link_name = "link_6__flange";
+          pos_constraint.constraint_region.primitive_poses.push_back(interim_pose);
+          pos_constraint.weight = 1.0;
+          constraints.position_constraints.push_back(pos_constraint);
+          move_group_->setPathConstraints(constraints);
 
-  moveit_msgs::msg::Constraints constraints;
-  constraints.name = "interim";
-  moveit_msgs::msg::PositionConstraint pos_constraint;
-  pos_constraint.header.frame_id = "world";
-  pos_constraint.link_name = "link_6__flange";
-  pos_constraint.constraint_region.primitive_poses.push_back(interim_pose);
-  pos_constraint.weight = 1.0;
-  constraints.position_constraints.push_back(pos_constraint);
-  move_group_->setPathConstraints(constraints);
+          move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
+          move_group_->setPlannerId("CIRC");
+          move_group_->setPlanningTime(10.0);
+          {
+            auto cp = move_group_->getCurrentPose("link_6__flange").pose;
+            double dx = target.position.x - cp.position.x;
+            double dy = target.position.y - cp.position.y;
+            double dz = target.position.z - cp.position.z;
+            double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+            double vel = std::min(goal_array.at(i).f, std::max(0.02, 0.1 * (0.01 / std::max(dist, 0.001))));
+            move_group_->setMaxVelocityScalingFactor(vel);
+          }
+          move_group_->setMaxAccelerationScalingFactor(0.05);
+          move_group_->setPoseTarget(target, "link_6__flange");
 
-  move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
-  move_group_->setPlannerId("CIRC");
-  move_group_->setPlanningTime(10.0);
-  {
-    auto cp = move_group_->getCurrentPose("link_6__flange").pose;
-    double dx = target.position.x - cp.position.x;
-    double dy = target.position.y - cp.position.y;
-    double dz = target.position.z - cp.position.z;
-    double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
-    double vel = std::min(goal_array.at(i).f, std::max(0.02, 0.1 * (0.01 / std::max(dist, 0.001))));
-    move_group_->setMaxVelocityScalingFactor(vel);
-  }
-  move_group_->setMaxAccelerationScalingFactor(0.05);
-  move_group_->setPoseTarget(target, "link_6__flange");
-
-  moveit::planning_interface::MoveGroupInterface::Plan plan;
-  if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
-    RCLCPP_INFO(this->get_logger(), "%s to point %zu SUCCESS", goal_array.at(i).cmd.c_str(), i);
-    execute_with_trace(plan, is_print);
-    is_print = false;
-  } else {
-    RCLCPP_ERROR(this->get_logger(), "%s to point %zu FAILED", goal_array.at(i).cmd.c_str(), i);
-    res->success = false;
-    move_group_->clearPathConstraints();
-    continue;
-  }
-  move_group_->clearPathConstraints();
-}
+          moveit::planning_interface::MoveGroupInterface::Plan plan;
+          if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+            RCLCPP_INFO(this->get_logger(), "%s to point %zu SUCCESS", goal_array.at(i).cmd.c_str(), i);
+            execute_with_trace(plan, is_print);
+            is_print = false;
+          } else {
+            RCLCPP_ERROR(this->get_logger(), "%s to point %zu FAILED", goal_array.at(i).cmd.c_str(), i);
+            res->success = false;
+            move_group_->clearPathConstraints();
+            continue;
+          }
+          move_group_->clearPathConstraints();
+        }
       }
     }
   }

@@ -1,0 +1,10 @@
+<launch>
+    <arg name="model_file" default="/home/rishika/ws/meca500/src/Final_Project/Cube.gcode.3mf"/>
+    <arg name="out_file" default="/home/rishika/ws/meca500/src/Final_Project/out.txt"/>
+    <arg name="reach_csv" default="/home/rishika/ws/meca500/src/Final_Project/reachable_points.csv"/>
+    <arg name="layers" default="7"/>
+
+    <executable cmd="bash $(find-pkg-share meca500_demo)/launch/print_sequence.sh $(var model_file) $(var out_file) $(var reach_csv) $(var layers)"
+                output="screen"/>
+</launch>
+

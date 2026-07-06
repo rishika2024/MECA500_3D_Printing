@@ -4,3 +4,5 @@ meca500_robot/urdf/meca500_robot.urdf
 Cube.gcode.3mf
 out_boat.txt
 out.txt
+reachable_points.csv
+gcode/src/_pycache__/

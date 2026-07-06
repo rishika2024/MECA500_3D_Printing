@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import re, sys, math, zipfile, argparse
+import re, sys, math, zipfile, argparse, csv
 
 FIRST_LAYER_Z = 0.4
 Z_CLAMP       = 0.01
@@ -7,6 +7,72 @@ SIMPLIFY_TOL  = 0.005
 CROSS_NORM_MIN = 2.5e-5
 
 WORD_RE = re.compile(r"([A-Z])\s*([-+]?\d*\.?\d+)")
+
+def load_reach_bounds(csv_path):
+    pts = set()
+    xs_all, ys_all = set(), set()
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            lx = round(float(row["local_x"]) * 1000.0, 3)
+            ly = round(float(row["local_y"]) * 1000.0, 3)
+            pts.add((lx, ly))
+            xs_all.add(lx)
+            ys_all.add(ly)
+    if not pts:
+        raise ValueError(f"no reachable points in {csv_path}")
+
+    xs = sorted(xs_all)
+    ys = sorted(ys_all)
+    nx, ny = len(xs), len(ys)
+    xi = {x: i for i, x in enumerate(xs)}
+    yi = {y: i for i, y in enumerate(ys)}
+
+    # build occupancy grid: True if reachable
+    grid = [[False]*nx for _ in range(ny)]
+    for (lx, ly) in pts:
+        grid[yi[ly]][xi[lx]] = True
+
+    # largest rectangle in histogram approach
+    # for each row, compute height (consecutive reachable cells upward)
+    height = [[0]*nx for _ in range(ny)]
+    for col in range(nx):
+        for row in range(ny):
+            if grid[row][col]:
+                height[row][col] = 1 if row == 0 else height[row-1][col] + 1
+            else:
+                height[row][col] = 0
+
+    best_area = 0
+    best_rect = (0, 0, 0, 0)  # col_left, col_right, row_bottom, row_top
+
+    for row in range(ny):
+        # largest rectangle in histogram for this row
+        stack = []
+        for col in range(nx + 1):
+            h = height[row][col] if col < nx else 0
+            while stack and height[row][stack[-1]] > h:
+                top = stack.pop()
+                w = col if not stack else col - stack[-1] - 1
+                ht = height[row][top]
+                area = w * ht
+                if area > best_area:
+                    best_area = area
+                    left = 0 if not stack else stack[-1] + 1
+                    right = col - 1
+                    best_rect = (left, right, row - ht + 1, row)
+            stack.append(col)
+
+    cl, cr, rt, rb = best_rect
+    x_min, x_max = xs[cl], xs[cr]   
+    y_min, y_max = ys[rt], ys[rb]
+
+    rect_w = x_max - x_min
+    rect_h = y_max - y_min
+    print(f"largest inscribed rectangle: {rect_w:.1f} x {rect_h:.1f} mm")
+    print(f"  X[{x_min:.1f}, {x_max:.1f}] Y[{y_min:.1f}, {y_max:.1f}]")
+    print(f"  grid cells: cols[{cl},{cr}] rows[{rt},{rb}], area={best_area} cells")
+
+    return x_min, x_max, y_min, y_max
 
 def load_lines(path):
     if path.lower().endswith(".3mf"):
@@ -52,7 +118,11 @@ def parse_moves(lines):
         moves.append(mv)
     return moves
 
-def filter_center_scale(moves):
+def filter_center_scale(moves, reach_bounds):
+    REACH_X_MIN, REACH_X_MAX, REACH_Y_MIN, REACH_Y_MAX = reach_bounds
+    reach_cx = (REACH_X_MIN + REACH_X_MAX) / 2
+    reach_cy = (REACH_Y_MIN + REACH_Y_MAX) / 2
+
     first=next((k for k,m in enumerate(moves) if m["dE"]>1e-9 and m["Z"]<=FIRST_LAYER_Z),0)
     if first>0: first-=1
     moves=moves[first:]
@@ -62,15 +132,13 @@ def filter_center_scale(moves):
     span=max(max(ex)-min(ex),max(ey)-min(ey))
     s=1.0
     print(f"part span {span:.1f}mm, center ({cx:.1f},{cy:.1f}), scale {s:.3f}")
+    print(f"reach bounds X[{REACH_X_MIN:.1f},{REACH_X_MAX:.1f}] Y[{REACH_Y_MIN:.1f},{REACH_Y_MAX:.1f}] mm, "
+          f"target center ({reach_cx:.1f},{reach_cy:.1f})")
 
-    REACH_X_MIN, REACH_X_MAX = -165.0, 165.0
-    REACH_Y_MIN, REACH_Y_MAX = -165.0, 0.0
-    y_offset = -87.0
-
-    # first pass: center, offset, clamp
+    # first pass: center onto the reachable box, clamp
     centered=[]
     for m in moves:
-        x,y=(m["X"]-cx),(m["Y"]-cy + y_offset)
+        x,y=(m["X"]-cx+reach_cx),(m["Y"]-cy+reach_cy)
         x = max(REACH_X_MIN, min(REACH_X_MAX, x))
         y = max(REACH_Y_MIN, min(REACH_Y_MAX, y))
         m=dict(m); m["X"],m["Y"]=x,y; m["Z"]=max(m["Z"],Z_CLAMP)
@@ -228,12 +296,21 @@ if __name__=="__main__":
     ap.add_argument("output",nargs="?",default=None)
     ap.add_argument("-l","--layers",type=int,default=0,
                     help="number of evenly spaced layers to keep across full height, 0 = all (default)")
+    ap.add_argument("--reach-csv",default="reachable_points.csv",
+                    help="CSV from the reachability node used to compute workspace clamp bounds")
     args=ap.parse_args()
     outfile=args.output or args.input.rsplit(".",1)[0]+"_parsed.txt"
+
+    try:
+        reach_bounds=load_reach_bounds(args.reach_csv)
+    except (FileNotFoundError, ValueError, KeyError) as e:
+        sys.exit(f"error: could not load reach bounds from {args.reach_csv} ({e}); "
+                 f"run the reachability node first or pass --reach-csv <path>")
+
     moves=parse_moves(load_lines(args.input))
     print(f"parsed {len(moves)} raw moves")
     moves=split_arcs(moves)
-    moves=filter_center_scale(moves)
+    moves=filter_center_scale(moves, reach_bounds)
     moves=simplify_and_dedup(moves)
     moves=demote_flat_arcs(moves)
     moves=select_layers(moves,args.layers)
