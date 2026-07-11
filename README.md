@@ -29,7 +29,7 @@ git apply /path/to/Final_Project/patches/pilz_industrial_motion_planner.patch
 ```
 
 ## Setup
-<img width="2040" height="3060" alt="Full Setup" src="https://github.com/user-attachments/assets/774f2ea0-13c4-4861-8aae-b70a6dd08630" />
+<img width="2040" alt="Full Setup" src="https://github.com/user-attachments/assets/774f2ea0-13c4-4861-8aae-b70a6dd08630" />
 
 ## Demos
 
