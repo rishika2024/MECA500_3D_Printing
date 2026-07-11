@@ -97,7 +97,7 @@ ros2 service call /gcode_file_service meca500_demo/srv/GcodeFile "{file_path: '/
 * Reinforcement learning for adaptive tool orientation and extrusion
 
 ## Tech Stack
-ROS2 | MoveIt2 (Pilz Industrial Motion Planner) | C++ | Python | Meca500 API
+ROS2 | MoveIt2 | Pilz Industrial Motion Planner | C++ | Python | Meca500 API
 
 ## Author
 Rishika Bera — MS Robotics, Northwestern University
