@@ -33,7 +33,7 @@ git apply /path/to/Final_Project/patches/pilz_industrial_motion_planner.patch
 
 ## Demos
 
-In the RViz views below, the **green** line is the `ee_trace` (every sampled end-effector position, travel and print alike) and the **purple** line is the `print_trace` (only the segments where the nozzle was actually extruding).
+In the RViz views below, the **green** line is the `ee_trace` (every sampled end-effector position) and the **purple** line is the `print_trace` (only the segments where the nozzle was actually extruding).
 
 * **With extruder, flat bed (Benchy)** — full print pipeline of Benchy Boat
 
