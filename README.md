@@ -60,7 +60,7 @@ ros2 launch meca500_demo trajectory.launch.xml use_mock_hardware:=false  # real 
 **Set the print bed's pose** (position + orientation quaternion — use a non-identity `qx/qy/qz/qw` for the random-orientation/cube test):
 ```bash
 ros2 service call /table_service meca500_demo/srv/Table \
-  "{x: 0.25, y: 0.0, z: 0.05, qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0}"
+  "{x: 0.0, y: -0.20, z: -0.15, qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0}"
 ```
 
 **Send raw G-code directly** (single G1/G2/G3 moves for testing):
