@@ -222,9 +222,10 @@ private:
           robot_state->setJointPositions(jt.joint_names[j], &pt.positions[j]);
         }
         robot_state->updateLinkTransforms();
-        const Eigen::Isometry3d& ee_tf = robot_state->getGlobalLinkTransform("link_6__flange");
-        // offset by -15mm along flange local Z so the trace sits at the outer face, not the joint center
-        Eigen::Vector3d tip = ee_tf.translation() + ee_tf.rotation() * Eigen::Vector3d(0, 0, -0.015);
+        const Eigen::Isometry3d& ee_tf = robot_state->getGlobalLinkTransform("nozzle");
+        // nozzle frame is an estimated center; true tip sits 8mm further along
+        // the same direction the tool points (local +Z)
+        Eigen::Vector3d tip = ee_tf.translation() + ee_tf.rotation() * Eigen::Vector3d(0, 0, 0.008);
         double t = pt.time_from_start.sec + pt.time_from_start.nanosec * 1e-9;
         geometry_msgs::msg::Point p;
         p.x = tip.x();
@@ -316,12 +317,13 @@ private:
         marker_print.color.a = 1.0f;
         marker_print.lifetime = rclcpp::Duration(0, 0);
         while (std::chrono::steady_clock::now() < stop_time) {
-          auto pose = move_group_->getCurrentPose("link_6__flange");
+          auto pose = move_group_->getCurrentPose("nozzle");
           Eigen::Quaterniond q(pose.pose.orientation.w, pose.pose.orientation.x,
                                pose.pose.orientation.y, pose.pose.orientation.z);
           Eigen::Vector3d origin(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
-          // offset -15mm along flange local Z so the trace sits at the outer face
-          Eigen::Vector3d tip = origin + q.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.015);
+          // nozzle frame is an estimated center; true tip sits 8mm further along
+          // the same direction the tool points (local +Z)
+          Eigen::Vector3d tip = origin + q.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.008);
           geometry_msgs::msg::Point p;
           p.x = tip.x();
           p.y = tip.y();
@@ -416,7 +418,7 @@ private:
         //F
         double f = move.f;
         double f_scaled = f_scaling(f, move.has_f);
-        
+
         goal_array.push_back({move.cmd, P_robot.x(), P_robot.y(), P_robot.z(),
                               IJ_robot.x(), IJ_robot.y(), move.e, f_scaled, move.has_i,
                               move.has_j, move.has_e, move.has_f});
@@ -438,10 +440,10 @@ private:
       if (table_normal.dot(to_robot) < 0) {
         table_normal = -table_normal;  // flip so it points toward the robot
       }
-      // Safety: if the normal still points downward the approach loop goes through the floor.
-      // For any table the robot approaches from above, flip it upward.
+      // Safety: force the tool axis to point downward so the arm reaches down
+      // and touches the table from above, instead of twisting to point up.
 
-      if (table_normal.z() < 0) {
+      if (table_normal.z() > 0) {
         table_normal = -table_normal;
       }
 
@@ -475,7 +477,9 @@ private:
       // try to plan and execute a trajectory for each point along the line until one succeeds
 
       for (double t = 0.05; t <= 0.35; t += 0.02) {
-        Eigen::Vector3d p = table_center + t * table_normal;
+        // Standoff must move away from the table, opposite table_normal (which
+        // points into the table so the tool orientation approaches correctly).
+        Eigen::Vector3d p = table_center - t * table_normal;
 
         geometry_msgs::msg::Pose target;
         target.position.x = p.x();
@@ -494,7 +498,7 @@ private:
         move_group_->setPlanningTime(10.0);
         move_group_->setMaxVelocityScalingFactor(0.5);
         move_group_->setMaxAccelerationScalingFactor(0.5);
-        move_group_->setPoseTarget(target, "link_6__flange");
+        move_group_->setPoseTarget(target, "nozzle");
 
         moveit::planning_interface::MoveGroupInterface::Plan plan;
         if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
@@ -508,14 +512,18 @@ private:
         move_group_->clearPoseTargets();
       }
 
-      // Now reaching the table surface
-      if (success) {
+      // Now reaching the first gcode point directly (not the table's own origin,
+      // which is generally a different XY position and was causing a detour/loop
+      // between this step and the first real point in the loop below)
+      if (success && !goal_array.empty()) {
         geometry_msgs::msg::Pose target;
 
-        Eigen::Vector3d table_tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.015);
-        target.position.x = table_center.x() + table_tool_offset.x();
-        target.position.y = table_center.y() + table_tool_offset.y();
-        target.position.z = table_center.z() + table_tool_offset.z();
+        // Commanding the nozzle *frame*, which sits 8mm short of the true tip along
+        // local +Z, so pull the frame back by 8mm to land the tip on the target.
+        Eigen::Vector3d table_tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.008);
+        target.position.x = goal_array.at(0).x + table_tool_offset.x();
+        target.position.y = goal_array.at(0).y + table_tool_offset.y();
+        target.position.z = goal_array.at(0).z + table_tool_offset.z();
         target.orientation.x = ee_orient.x();
         target.orientation.y = ee_orient.y();
         target.orientation.z = ee_orient.z();
@@ -526,7 +534,7 @@ private:
         move_group_->setPlanningTime(10.0);
         move_group_->setMaxVelocityScalingFactor(0.5);
         move_group_->setMaxAccelerationScalingFactor(0.5);
-        move_group_->setPoseTarget(target, "link_6__flange");
+        move_group_->setPoseTarget(target, "nozzle");
         moveit::planning_interface::MoveGroupInterface::Plan lin_to_table_plan;
         if (move_group_->plan(lin_to_table_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
           RCLCPP_INFO(this->get_logger(), "Planning to table surface SUCCESS! Executing...");
@@ -537,8 +545,9 @@ private:
     }
 
     if (moved_to_bed_) {
-      // Inverse of marker offset: put the flange origin so the tip (-15mm along local Z) reaches the gcode coordinate
-      Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.015);
+      // Commanding the nozzle *frame*, which sits 8mm short of the true tip along
+      // local +Z, so pull the frame back by 8mm to land the tip on the gcode coordinate
+      Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.008);
       for (size_t i = 0; i < goal_array.size(); i++) {
         geometry_msgs::msg::Pose target;
 
@@ -568,7 +577,7 @@ private:
           move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
           move_group_->setPlannerId("LIN");
           {
-            auto cp = move_group_->getCurrentPose("link_6__flange").pose;
+            auto cp = move_group_->getCurrentPose("nozzle").pose;
             double dx = target.position.x - cp.position.x;
             double dy = target.position.y - cp.position.y;
             double dz = target.position.z - cp.position.z;
@@ -577,7 +586,7 @@ private:
             move_group_->setMaxVelocityScalingFactor(vel);
           }
           move_group_->setMaxAccelerationScalingFactor(0.05);
-          move_group_->setPoseTarget(target, "link_6__flange");
+          move_group_->setPoseTarget(target, "nozzle");
   
           moveit::planning_interface::MoveGroupInterface::Plan plan;
           if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
@@ -605,10 +614,51 @@ private:
             goal_array.at(i).x, goal_array.at(i).y, goal_array.at(i).z,
             goal_array.at(i).i, goal_array.at(i).j);
 
-          auto current_pose = move_group_->getCurrentPose("link_6__flange").pose;
-          double start_x = current_pose.position.x;
-          double start_y = current_pose.position.y;
-          double start_z = current_pose.position.z;
+          // NEW (change 1 of 4): anchor the arc start to the gcode's intended
+          // previous point instead of the live robot pose. The slicer defines
+          // I/J relative to that previous point; reading the start from
+          // getCurrentPose() instead means any offset between the robot and
+          // that point (a skipped move, tracking residue, stale joint state)
+          // shifts the computed center and rotates both atan2 angles inside
+          // get_arc_center(). For a shallow arc the whole commanded sweep is
+          // under a degree, so a sub-mm offset is enough to push start_angle
+          // past end_angle, the +2pi branch fires, and the interim lands on
+          // the far side of the circle -- Pilz then sweeps the near-full
+          // circle through it. Same correct math, wrong input.
+          double start_x, start_y, start_z;
+          if (i > 0) {
+            start_x = goal_array.at(i - 1).x + tool_offset.x();
+            start_y = goal_array.at(i - 1).y + tool_offset.y();
+            start_z = goal_array.at(i - 1).z + tool_offset.z();
+          } else {
+            auto current_pose = move_group_->getCurrentPose("nozzle").pose;
+            start_x = current_pose.position.x;
+            start_y = current_pose.position.y;
+            start_z = current_pose.position.z;
+          }
+
+          // NEW (change 2 of 4): the interim computed from the anchor is only
+          // valid if Pilz will actually start there -- Pilz always plans from
+          // the robot's real state, and it never sees G2/G3: the direction is
+          // carried purely by which side of the chord the interim sits on.
+          // If the robot is not at the anchor (an earlier move failed and got
+          // skipped), don't plan an arc at all: demote to G1, since a straight
+          // line to an absolute target cannot loop from anywhere.
+          if (i > 0) {
+            auto live_pose = move_group_->getCurrentPose("nozzle").pose;
+            double desync = std::hypot(live_pose.position.x - start_x,
+                                        live_pose.position.y - start_y);
+            if (desync > 0.0001) {  // 0.1 mm
+              RCLCPP_WARN(this->get_logger(),
+                "Point %zu: robot is %.3fmm off the arc's start (upstream move skipped), demoting arc to LIN",
+                i, desync * 1000.0);
+              goal_array.at(i).cmd = "G1";
+              goal_array.at(i).has_i = false;
+              goal_array.at(i).has_j = false;
+              i--;
+              continue;
+            }
+          }
 
           // target is now declared above the if/else block so it's valid here
           geometry_msgs::msg::PoseStamped center;
@@ -625,14 +675,53 @@ private:
           RCLCPP_INFO(get_logger(), "r_start=%.6f r_end=%.6f diff=%.9f",
             r_start, r_end, fabs(r_start - r_end));
 
-          // FIX: call get_arc_center BEFORE using mid_point_array
+          if (r_start < 1e-9 || std::fabs(r_end - r_start) > std::max(0.05 * r_start, 0.00005)) {
+            // target isn't actually on the circle I/J implies (e.g. a stale
+            // wipe/retraction arc, or a target shifted by the tool offset in
+            // a way the source I/J never accounted for) -- get_arc_center()
+            // below only uses r_start, so feeding it a mismatched target
+            // produces a bogus interim waypoint and CIRC sweeps out a loop
+            // that was never actually in the gcode. Plan as LIN instead.
+            RCLCPP_WARN(this->get_logger(),
+              "Point %zu: arc endpoint not on I/J circle (r_start=%.6f r_end=%.6f), planning as LIN",
+              i, r_start, r_end);
+            goal_array.at(i).cmd = "G1";
+            goal_array.at(i).has_i = false;
+            goal_array.at(i).has_j = false;
+            i--;
+            continue;
+          }
+
+          // NEW (change 3 of 4): sweep sanity check. The parser guarantees
+          // every arc it writes sweeps well under 180 degrees, so a computed
+          // sweep near a full circle can only mean inconsistent inputs (a
+          // direction flip), never a real command -- demote instead of
+          // letting CIRC execute it.
+          {
+            double a0 = atan2(start_y - center.pose.position.y, start_x - center.pose.position.x);
+            double a1 = atan2(target.position.y - center.pose.position.y, target.position.x - center.pose.position.x);
+            double angle_diff = (goal_array.at(i).cmd == "G2") ? (a0 - a1) : (a1 - a0);
+            if (angle_diff <= 0) angle_diff += 2 * M_PI;
+            if (angle_diff * 180.0 / M_PI > 185.0) {
+              RCLCPP_WARN(this->get_logger(),
+                "Point %zu: computed sweep %.1f deg exceeds 185, direction flip -- planning as LIN",
+                i, angle_diff * 180.0 / M_PI);
+              goal_array.at(i).cmd = "G1";
+              goal_array.at(i).has_i = false;
+              goal_array.at(i).has_j = false;
+              i--;
+              continue;
+            }
+          }
+
+          // get_arc_center
           mid_point_array = get_arc_center(
             {start_x, start_y, start_z},
             {target.position.x, target.position.y, target.position.z},
             {center.pose.position.x, center.pose.position.y, center.pose.position.z},
             goal_array.at(i).cmd);
 
-          // Now safe to use mid_point_array
+          // mid_point_array
           Eigen::Vector3d a(start_x, start_y, start_z);
           Eigen::Vector3d b(mid_point_array[0], mid_point_array[1], mid_point_array[2]);
           Eigen::Vector3d c(target.position.x, target.position.y, target.position.z);
@@ -661,7 +750,7 @@ private:
           constraints.name = "interim";
           moveit_msgs::msg::PositionConstraint pos_constraint;
           pos_constraint.header.frame_id = "world";
-          pos_constraint.link_name = "link_6__flange";
+          pos_constraint.link_name = "nozzle";
           pos_constraint.constraint_region.primitive_poses.push_back(interim_pose);
           pos_constraint.weight = 1.0;
           constraints.position_constraints.push_back(pos_constraint);
@@ -671,7 +760,7 @@ private:
           move_group_->setPlannerId("CIRC");
           move_group_->setPlanningTime(10.0);
           {
-            auto cp = move_group_->getCurrentPose("link_6__flange").pose;
+            auto cp = move_group_->getCurrentPose("nozzle").pose;
             double dx = target.position.x - cp.position.x;
             double dy = target.position.y - cp.position.y;
             double dz = target.position.z - cp.position.z;
@@ -680,7 +769,7 @@ private:
             move_group_->setMaxVelocityScalingFactor(vel);
           }
           move_group_->setMaxAccelerationScalingFactor(0.05);
-          move_group_->setPoseTarget(target, "link_6__flange");
+          move_group_->setPoseTarget(target, "nozzle");
 
           moveit::planning_interface::MoveGroupInterface::Plan plan;
           if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
@@ -688,9 +777,19 @@ private:
             execute_with_trace(plan, is_print);
             is_print = false;
           } else {
-            RCLCPP_ERROR(this->get_logger(), "%s to point %zu FAILED", goal_array.at(i).cmd.c_str(), i);
+            // NEW (change 4 of 4): don't skip the point on CIRC failure. A
+            // skipped point leaves the robot short of goal_array.at(i), which
+            // is exactly what desyncs the NEXT arc's anchor from reality --
+            // the seed of every loop. Demote to G1 and reach the same
+            // absolute target as a straight line instead.
+            RCLCPP_ERROR(this->get_logger(), "%s to point %zu FAILED, demoting to LIN",
+              goal_array.at(i).cmd.c_str(), i);
             res->success = false;
             move_group_->clearPathConstraints();
+            goal_array.at(i).cmd = "G1";
+            goal_array.at(i).has_i = false;
+            goal_array.at(i).has_j = false;
+            i--;
             continue;
           }
           move_group_->clearPathConstraints();

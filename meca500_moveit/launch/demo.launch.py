@@ -17,6 +17,8 @@ def generate_launch_description():
             description="Meca500 monitoring port"),
         DeclareLaunchArgument("use_rviz", default_value="true",
             description="Launch RViz (true) or headless (false)"),
+        DeclareLaunchArgument("use_extruder", default_value="true",
+            description="Attach the extruder end-effector meshes (true) or bare flange (false)"),
     ]
 
     moveit_config = (
@@ -26,6 +28,7 @@ def generate_launch_description():
             "robot_ip":          LaunchConfiguration("robot_ip"),
             "control_port":      LaunchConfiguration("control_port"),
             "monitoring_port":   LaunchConfiguration("monitoring_port"),
+            "use_extruder":      LaunchConfiguration("use_extruder"),
         })
         .planning_pipelines(
             pipelines=["ompl", "pilz_industrial_motion_planner"],

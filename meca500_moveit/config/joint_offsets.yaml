@@ -1,10 +1,11 @@
 # Calibration offsets (degrees): URDF_angle = offset - Mecademic_angle
-# Derived from slider visual match [38,33,-83,2] 
-# at actual home [-0.213,-0.196,-0.046,0.006]
+#
+# Real robot home verified via MoveJoints(0, 0, 0, 0, 0, 240)
+# 
 
 joint1: 0.0
-joint2: 40.282
-joint3: 34.984
-joint4: -82.954
-joint5: 2.023
-joint6: 0.0
+joint2: 0.0
+joint3: 0.0
+joint4: 0.0
+joint5: 0.0
+joint6: 240.0

@@ -39,9 +39,7 @@ public:
     move_group_ = std::make_shared<MoveGroupInterface>(shared_from_this(), "meca500_arm");
     move_group_->startStateMonitor(3.0);
 
-    marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
-      "reachability_dots", rclcpp::QoS(1).transient_local());
-
+    
     RCLCPP_INFO(this->get_logger(), "Waiting for table_marker...");
     auto wait_start = std::chrono::steady_clock::now();
     while (rclcpp::ok() && !table_pose_received_ &&
@@ -58,10 +56,11 @@ public:
 
 private:
   std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+ 
   rclcpp::Subscription<visualization_msgs::msg::Marker>::SharedPtr table_pos_sub;
-  double tx = 0.0, ty = 0.2, tz = 0.0, qx = 0.0, qy = 0.0, qz = 0.0, qw = 1.0;
+  double tx = 0.0, ty = -0.2, tz = 0.0, qx = 0.0, qy = 0.0, qz = 0.0, qw = 1.0;
   bool table_pose_received_ = false;
+  double step = 0.0;
 
 
   struct ReachPt { double lx, ly, rx, ry, rz; };
@@ -89,7 +88,7 @@ private:
     move_group_->setMaxVelocityScalingFactor(0.5);
     move_group_->setMaxAccelerationScalingFactor(0.5);
     move_group_->clearPoseTargets();
-    move_group_->setPoseTarget(target, "link_6__flange");
+    move_group_->setPoseTarget(target, "nozzle");
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
       move_group_->execute(plan);
@@ -107,7 +106,7 @@ private:
     move_group_->setMaxVelocityScalingFactor(0.5);
     move_group_->setMaxAccelerationScalingFactor(0.5);
     move_group_->clearPoseTargets();
-    move_group_->setPoseTarget(target, "link_6__flange");
+    move_group_->setPoseTarget(target, "nozzle");
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
       move_group_->execute(plan);
@@ -135,8 +134,20 @@ private:
     Eigen::Vector3d table_center(tx, ty, tz);
     Eigen::Vector3d table_normal = R_table.col(2);
     Eigen::Vector3d to_robot = -table_center;
-    if (table_normal.dot(to_robot) < 0) table_normal = -table_normal;
-    if (table_normal.z() < 0) table_normal = -table_normal;
+    if (table_normal.dot(to_robot) < 0){
+      table_normal = -table_normal;
+    }
+    // Force the tool axis downward so the arm reaches down and touches the
+    // table from above, instead of twisting to point up (matches trajectory.cpp).
+    if (table_normal.z() > 0){
+      table_normal = -table_normal;
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+      "table_center=[%.3f,%.3f,%.3f] raw_R_table_col2=[%.3f,%.3f,%.3f] table_normal(after flips)=[%.3f,%.3f,%.3f]",
+      table_center.x(), table_center.y(), table_center.z(),
+      R_table.col(2).x(), R_table.col(2).y(), R_table.col(2).z(),
+      table_normal.x(), table_normal.y(), table_normal.z());
 
     Eigen::Vector3d z_ee = table_normal;
     Eigen::Vector3d vect = Eigen::Vector3d::UnitX();
@@ -148,7 +159,9 @@ private:
     Eigen::Quaterniond ee_orient(R_ee);
     ee_orient.normalize();
 
-    Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.015);
+    // Commanding the nozzle *frame*, which sits 8mm short of the true tip along
+    // local +Z, so pull the frame back by 8mm to land the tip on the target.
+    Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.008);
 
     auto make_pose = [&](const Eigen::Vector3d& p) {
       geometry_msgs::msg::Pose pose;
@@ -169,7 +182,9 @@ private:
     // approach: hover above the board with OMPL, same as trajectory.cpp
     bool approached = false;
     for (double t = 0.05; t <= 0.35; t += 0.02) {
-      Eigen::Vector3d p = table_center + t * table_normal;
+      // Standoff must move away from the table, opposite table_normal (which
+      // points into the table so the tool orientation approaches correctly).
+      Eigen::Vector3d p = table_center - t * table_normal;
       geometry_msgs::msg::Pose target = make_pose(p);
       RCLCPP_INFO(this->get_logger(), "approach: trying standoff t=%.2f [%.3f,%.3f,%.3f]",
         t, p.x(), p.y(), p.z());
@@ -200,16 +215,20 @@ private:
     }
 
     // sweep: each dot is a Pilz LIN from wherever the arm currently is
-    visualization_msgs::msg::MarkerArray markers;
-    int id = 0;
+    
     int reachable = 0, total = 0;
     std::vector<ReachPt> reachable_pts;
 
     double half = edge / 2.0;
-    double step = (grid_n > 1) ? edge / (grid_n - 1) : 0.0;
+    // double step = (grid_n > 1) ? edge / (grid_n - 1) : 0.0;
+    if (grid_n > 1) {
+      step = edge / (grid_n - 1);
+    } else {
+      step = 0.0;      
+    }
 
-    for (int iy = 0; iy < grid_n; iy++) {
-      for (int ix = 0; ix < grid_n; ix++) {
+    for (int iy = grid_n - 1; iy >= 0; iy--) {
+      for (int ix = grid_n - 1; ix >= 0; ix--) {
         double lx = -half + ix * step;
         double ly = -half + iy * step;
         total++;
@@ -224,34 +243,14 @@ private:
         if (ok) {
           reachable++;
           reachable_pts.push_back({lx, ly, p.x(), p.y(), p.z()});
-        }
-
-        visualization_msgs::msg::Marker dot;
-        dot.header.frame_id = "world";
-        dot.header.stamp = this->now();
-        dot.ns = "reachability";
-        dot.id = id++;
-        dot.type = visualization_msgs::msg::Marker::SPHERE;
-        dot.action = visualization_msgs::msg::Marker::ADD;
-        dot.pose.position.x = p.x();
-        dot.pose.position.y = p.y();
-        dot.pose.position.z = p.z();
-        dot.pose.orientation.w = 1.0;
-        dot.scale.x = dot.scale.y = dot.scale.z = 0.005;
-        dot.color.a = 1.0;
-        dot.color.r = ok ? 0.0f : 1.0f;
-        dot.color.g = ok ? 1.0f : 0.0f;
-        dot.color.b = 0.0f;
-        dot.lifetime = rclcpp::Duration(0, 0);
-        markers.markers.push_back(dot);
+        }    
 
         RCLCPP_INFO(this->get_logger(),
           "dot[%d,%d] local(%.3f,%.3f) robot(%.3f,%.3f,%.3f) -> %s",
           ix, iy, lx, ly, p.x(), p.y(), p.z(), ok ? "REACHABLE" : "skip");
       }
     }
-
-    marker_pub_->publish(markers);
+    
     RCLCPP_INFO(this->get_logger(), "=== %d / %d dots reachable (%.0f%%) ===",
       reachable, total, 100.0 * reachable / std::max(1, total));
 

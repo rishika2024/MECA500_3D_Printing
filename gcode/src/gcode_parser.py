@@ -5,48 +5,30 @@ FIRST_LAYER_Z = 0.4
 Z_CLAMP       = 0.01
 SIMPLIFY_TOL  = 0.005
 CROSS_NORM_MIN = 2.5e-5
+DENSITY_WEIGHT = 0.8
 
 WORD_RE = re.compile(r"([A-Z])\s*([-+]?\d*\.?\d+)")
 
-def load_reach_bounds(csv_path):
-    pts = set()
-    xs_all, ys_all = set(), set()
-    with open(csv_path, newline="") as f:
-        for row in csv.DictReader(f):
-            lx = round(float(row["local_x"]) * 1000.0, 3)
-            ly = round(float(row["local_y"]) * 1000.0, 3)
-            pts.add((lx, ly))
-            xs_all.add(lx)
-            ys_all.add(ly)
-    if not pts:
-        raise ValueError(f"no reachable points in {csv_path}")
-
-    xs = sorted(xs_all)
-    ys = sorted(ys_all)
+def largest_rect_center(pts, xs, ys):
+    """Center of the largest fully-reachable axis-aligned rectangle (largest-
+    rectangle-in-histogram). Used only to pick where reachability is densest,
+    not to clip the model -- clipping uses the full point cloud instead."""
     nx, ny = len(xs), len(ys)
     xi = {x: i for i, x in enumerate(xs)}
     yi = {y: i for i, y in enumerate(ys)}
-
-    # build occupancy grid: True if reachable
     grid = [[False]*nx for _ in range(ny)]
     for (lx, ly) in pts:
-        grid[yi[ly]][xi[lx]] = True
+        grid[yi[round(ly, 3)]][xi[round(lx, 3)]] = True
 
-    # largest rectangle in histogram approach
-    # for each row, compute height (consecutive reachable cells upward)
     height = [[0]*nx for _ in range(ny)]
     for col in range(nx):
         for row in range(ny):
             if grid[row][col]:
                 height[row][col] = 1 if row == 0 else height[row-1][col] + 1
-            else:
-                height[row][col] = 0
 
     best_area = 0
     best_rect = (0, 0, 0, 0)  # col_left, col_right, row_bottom, row_top
-
     for row in range(ny):
-        # largest rectangle in histogram for this row
         stack = []
         for col in range(nx + 1):
             h = height[row][col] if col < nx else 0
@@ -58,21 +40,57 @@ def load_reach_bounds(csv_path):
                 if area > best_area:
                     best_area = area
                     left = 0 if not stack else stack[-1] + 1
-                    right = col - 1
-                    best_rect = (left, right, row - ht + 1, row)
+                    best_rect = (left, col - 1, row - ht + 1, row)
             stack.append(col)
 
-    cl, cr, rt, rb = best_rect
-    x_min, x_max = xs[cl], xs[cr]   
-    y_min, y_max = ys[rt], ys[rb]
+    cl, cr, rb, rt = best_rect
+    x_min, x_max = xs[cl], xs[cr]
+    y_min, y_max = ys[rb], ys[rt]
+    print(f"densest reachable rectangle: {x_max-x_min:.1f} x {y_max-y_min:.1f} mm, "
+          f"X[{x_min:.1f},{x_max:.1f}] Y[{y_min:.1f},{y_max:.1f}]")
+    return (x_min + x_max) / 2, (y_min + y_max) / 2
 
-    rect_w = x_max - x_min
-    rect_h = y_max - y_min
-    print(f"largest inscribed rectangle: {rect_w:.1f} x {rect_h:.1f} mm")
-    print(f"  X[{x_min:.1f}, {x_max:.1f}] Y[{y_min:.1f}, {y_max:.1f}]")
-    print(f"  grid cells: cols[{cl},{cr}] rows[{rt},{rb}], area={best_area} cells")
 
-    return x_min, x_max, y_min, y_max
+def load_reach_shape(csv_path):
+    pts = []
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            lx = float(row["local_x"]) * 1000.0
+            ly = float(row["local_y"]) * 1000.0
+            pts.append((lx, ly))
+    if not pts:
+        raise ValueError(f"no reachable points in {csv_path}")
+
+    xs = sorted(set(round(p[0], 3) for p in pts))
+    ys = sorted(set(round(p[1], 3) for p in pts))
+    x_step = min((xs[i+1] - xs[i] for i in range(len(xs) - 1)), default=1.0)
+    y_step = min((ys[i+1] - ys[i] for i in range(len(ys) - 1)), default=x_step)
+    step = min(x_step, y_step)
+
+    x_min, x_max = min(p[0] for p in pts), max(p[0] for p in pts)
+    y_min, y_max = min(p[1] for p in pts), max(p[1] for p in pts)
+
+    # Blend the densest-rectangle center with the overall footprint's midpoint,
+    # weighted mostly toward the densest region but pulled a bit toward the
+    # table's true center instead of sitting purely at the reachability peak.
+    
+    dense_cx, dense_cy = largest_rect_center(pts, xs, ys)
+    mid_cx, mid_cy = (x_min + x_max) / 2, (y_min + y_max) / 2
+    cx = DENSITY_WEIGHT * dense_cx + (1 - DENSITY_WEIGHT) * mid_cx
+    cy = DENSITY_WEIGHT * dense_cy + (1 - DENSITY_WEIGHT) * mid_cy
+
+    print(f"reachable footprint: {len(pts)} points, "
+          f"X[{x_min:.1f},{x_max:.1f}] Y[{y_min:.1f},{y_max:.1f}], grid step {step:.1f}mm")
+    print(f"  densest region center ({dense_cx:.1f},{dense_cy:.1f}), footprint midpoint ({mid_cx:.1f},{mid_cy:.1f})")
+    print(f"  blended center ({cx:.1f},{cy:.1f}) [{DENSITY_WEIGHT:.0%} densest / {1-DENSITY_WEIGHT:.0%} midpoint]")
+
+    return {"pts": pts, "step": step, "cx": cx, "cy": cy,
+            "x_min": x_min, "x_max": x_max, "y_min": y_min, "y_max": y_max}
+
+
+def within_reach(x, y, pts, step, tol=0.75):
+    """True if (x, y) is within `tol` grid steps of a reachable sample."""
+    return any((px - x) ** 2 + (py - y) ** 2 <= (step * tol) ** 2 for px, py in pts)
 
 def load_lines(path):
     if path.lower().endswith(".3mf"):
@@ -118,10 +136,9 @@ def parse_moves(lines):
         moves.append(mv)
     return moves
 
-def filter_center_scale(moves, reach_bounds):
-    REACH_X_MIN, REACH_X_MAX, REACH_Y_MIN, REACH_Y_MAX = reach_bounds
-    reach_cx = (REACH_X_MIN + REACH_X_MAX) / 2
-    reach_cy = (REACH_Y_MIN + REACH_Y_MAX) / 2
+def filter_center_scale(moves, reach_shape):
+    reach_pts, reach_step = reach_shape["pts"], reach_shape["step"]
+    reach_cx, reach_cy = reach_shape["cx"], reach_shape["cy"]
 
     first=next((k for k,m in enumerate(moves) if m["dE"]>1e-9 and m["Z"]<=FIRST_LAYER_Z),0)
     if first>0: first-=1
@@ -130,17 +147,14 @@ def filter_center_scale(moves, reach_bounds):
     if not ex: ex=[m["X"] for m in moves]; ey=[m["Y"] for m in moves]
     cx,cy=(min(ex)+max(ex))/2,(min(ey)+max(ey))/2
     span=max(max(ex)-min(ex),max(ey)-min(ey))
-    s=1.0
-    print(f"part span {span:.1f}mm, center ({cx:.1f},{cy:.1f}), scale {s:.3f}")
-    print(f"reach bounds X[{REACH_X_MIN:.1f},{REACH_X_MAX:.1f}] Y[{REACH_Y_MIN:.1f},{REACH_Y_MAX:.1f}] mm, "
-          f"target center ({reach_cx:.1f},{reach_cy:.1f})")
+    print(f"part span {span:.1f}mm, center ({cx:.1f},{cy:.1f}) -- printed at true scale, not resized")
+    print(f"reachable footprint center ({reach_cx:.1f},{reach_cy:.1f})")
 
-    # first pass: center onto the reachable box, clamp
+    # first pass: pure translation onto the densest reachable region (no scale,
+    # no per-point snapping -- either would distort the model's true shape/size)
     centered=[]
     for m in moves:
         x,y=(m["X"]-cx+reach_cx),(m["Y"]-cy+reach_cy)
-        x = max(REACH_X_MIN, min(REACH_X_MAX, x))
-        y = max(REACH_Y_MIN, min(REACH_Y_MAX, y))
         m=dict(m); m["X"],m["Y"]=x,y; m["Z"]=max(m["Z"],Z_CLAMP)
         centered.append(m)
 
@@ -156,18 +170,37 @@ def filter_center_scale(moves, reach_bounds):
         pad_y = (model_y_max - model_y_min) * 0.2
         print(f"model bbox (percentile): X[{model_x_min:.1f},{model_x_max:.1f}] Y[{model_y_min:.1f},{model_y_max:.1f}]")
     else:
-        model_x_min, model_x_max = REACH_X_MIN, REACH_X_MAX
-        model_y_min, model_y_max = REACH_Y_MIN, REACH_Y_MAX
+        model_x_min, model_x_max = reach_shape["x_min"], reach_shape["x_max"]
+        model_y_min, model_y_max = reach_shape["y_min"], reach_shape["y_max"]
         pad_x, pad_y = 0.0, 0.0
 
     # second pass: drop purge lines, demote degenerate arcs
     purged = 0
+    unreachable = 0
+    gap = False
     out=[]
     for m in centered:
         if (m["X"] < model_x_min - pad_x or m["X"] > model_x_max + pad_x or
             m["Y"] < model_y_min - pad_y or m["Y"] > model_y_max + pad_y):
             purged += 1
+            gap = True
             continue
+        if not within_reach(m["X"], m["Y"], reach_pts, reach_step):
+            unreachable += 1
+            gap = True
+            continue
+        if gap:
+            # A move was just dropped: the next kept point would otherwise
+            # connect straight from wherever the last kept point was, printing
+            # a phantom stroke across the gap. Force this transition to a
+            # non-extruding travel move instead (arcs demoted to G1 too, since
+            # a valid arc needs a real, unbroken start point).
+            m = dict(m)
+            m["dE"] = 0.0
+            if m["cmd"] in ("G2","G3"):
+                m["cmd"] = "G1"
+                m.pop("I", None); m.pop("J", None)
+            gap = False
         if m["cmd"] in ("G2","G3") and out:
             sx,sy=out[-1]["X"],out[-1]["Y"]
             ex,ey=m["X"],m["Y"]
@@ -187,6 +220,7 @@ def filter_center_scale(moves, reach_bounds):
                 m.pop("I",None); m.pop("J",None)
         out.append(m)
     if purged: print(f"removed {purged} moves outside model bbox (purge/cleaning lines)")
+    if unreachable: print(f"dropped {unreachable} moves outside the reachable footprint (left as gaps, not resized/distorted)")
     return out
 
 def split_arcs(moves):
@@ -201,7 +235,11 @@ def split_arcs(moves):
         span=(a0-a1) if m["cmd"]=="G2" else (a1-a0)
         sign=-1 if m["cmd"]=="G2" else 1
         if span<=0: span+=2*math.pi
-        if span<=math.pi+1e-6:
+        # split at 170 deg rather than a full 180: an exact half-circle is
+        # numerically ambiguous (which side is "the" arc), and the executor
+        # can only trust get_arc_center()'s sweep direction if this parser
+        # guarantees every surviving arc is unambiguously short of 180
+        if span<=math.radians(170):
             out.append(m); px,py=ex,ey; continue
         amid=a0+sign*span/2
         mx,my=ccx+r*math.cos(amid),ccy+r*math.sin(amid)
@@ -250,17 +288,41 @@ def simplify_and_dedup(moves):
         final.append(m)
     return final
 
-def demote_flat_arcs(moves, min_sweep_deg=0.5):
+def demote_flat_arcs(moves, min_sweep_deg=0.5, max_sweep_deg=170.0):
     out=[]; px,py=0.0,0.0
     for m in moves:
         if m["cmd"] in ("G2","G3") and ("I" in m or "J" in m):
             ccx,ccy=px+m.get("I",0.0),py+m.get("J",0.0)
             r=math.hypot(px-ccx,py-ccy)
+            r_end=math.hypot(m["X"]-ccx,m["Y"]-ccy)
             chord=math.hypot(m["X"]-px,m["Y"]-py)
-            if r>1e-9 and chord/(2*r)<=1.0:
-                sweep=2*math.asin(chord/(2*r))
-                if math.degrees(sweep)<min_sweep_deg:
+            if r<=1e-9 or abs(r_end-r)>max(0.05*r,0.05):
+                # endpoint doesn't actually lie on the circle implied by I/J
+                # (e.g. a slicer wipe/retraction "arc" whose I/J was computed
+                # relative to a predecessor that got dropped/reordered by
+                # filtering upstream) -- geometrically invalid as a real arc,
+                # so treat it as a straight travel/print move instead of
+                # letting an executor sweep out a bogus loop to reach the target.
+                m=dict(m); m["cmd"]="G1"; m.pop("I",None); m.pop("J",None)
+            else:
+                # Directional sweep, not the chord-based asin() below --
+                # asin can only ever return a minor-arc angle (0-180), so it
+                # can't tell a legitimate short arc from the same chord swept
+                # the *long* way around. split_arcs already capped every arc
+                # at 170 deg relative to its original predecessor, but
+                # select_layers/filtering (which run after it) can swap in a
+                # different predecessor for the same I/J -- recheck the real
+                # sweep here, against final adjacency, same reason the
+                # radius check above has to be redone here too.
+                a0=math.atan2(py-ccy,px-ccx); a1=math.atan2(m["Y"]-ccy,m["X"]-ccx)
+                angle_diff=(a0-a1) if m["cmd"]=="G2" else (a1-a0)
+                if angle_diff<=0: angle_diff+=2*math.pi
+                if math.degrees(angle_diff)>max_sweep_deg:
                     m=dict(m); m["cmd"]="G1"; m.pop("I",None); m.pop("J",None)
+                elif chord/(2*r)<=1.0:
+                    sweep=2*math.asin(chord/(2*r))
+                    if math.degrees(sweep)<min_sweep_deg:
+                        m=dict(m); m["cmd"]="G1"; m.pop("I",None); m.pop("J",None)
         out.append(m); px,py=m["X"],m["Y"]
     return out
 
@@ -302,17 +364,21 @@ if __name__=="__main__":
     outfile=args.output or args.input.rsplit(".",1)[0]+"_parsed.txt"
 
     try:
-        reach_bounds=load_reach_bounds(args.reach_csv)
+        reach_shape=load_reach_shape(args.reach_csv)
     except (FileNotFoundError, ValueError, KeyError) as e:
-        sys.exit(f"error: could not load reach bounds from {args.reach_csv} ({e}); "
+        sys.exit(f"error: could not load reach shape from {args.reach_csv} ({e}); "
                  f"run the reachability node first or pass --reach-csv <path>")
 
     moves=parse_moves(load_lines(args.input))
     print(f"parsed {len(moves)} raw moves")
     moves=split_arcs(moves)
-    moves=filter_center_scale(moves, reach_bounds)
+    moves=filter_center_scale(moves, reach_shape)
     moves=simplify_and_dedup(moves)
-    moves=demote_flat_arcs(moves)
     moves=select_layers(moves,args.layers)
+    # must run last: any prior filtering step (reachability drops, layer
+    # selection, purges) can change which move immediately precedes a given
+    # arc, which invalidates that arc's I/J (computed relative to whatever
+    # point now actually comes before it, not its original predecessor)
+    moves=demote_flat_arcs(moves)
     open(outfile,"w").write("\n".join(fmt(moves)))
     print(f"{len(moves)} moves -> {outfile}")

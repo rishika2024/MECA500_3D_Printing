@@ -10,6 +10,8 @@
           args='-d $(find-pkg-share meca500_demo)/config/traj.rviz'/>
 
     <node pkg='meca500_demo' exec='trajectory'>
+        <param name="robot_description" value="$(command 'xacro $(find-pkg-share meca500_moveit)/config/meca500.urdf.xacro use_mock_hardware:=$(var use_mock_hardware)')" type="str"/>
+        <param name="robot_description_semantic" value="$(command 'cat $(find-pkg-share meca500_moveit)/config/meca500.srdf')" type="str"/>
         <param from='$(find-pkg-share meca500_demo)/config/trajectory_kinematics.yaml'/>
         <param name='use_mock_hardware' value='$(var use_mock_hardware)'/>
     </node>

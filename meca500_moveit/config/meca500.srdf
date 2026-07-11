@@ -21,28 +21,31 @@
     <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
     <group_state name="Home" group="meca500_arm">
         <joint name="joint1" value="0"/>
-        <joint name="joint2" value="0.7069"/>
-        <joint name="joint3" value="0.6140"/>
-        <joint name="joint4" value="-1.4471"/>
-        <joint name="joint5" value="0.0352"/>
+        <joint name="joint2" value="0"/>
+        <joint name="joint3" value="0"/>
+        <joint name="joint4" value="0"/>
+        <joint name="joint5" value="0"/>
         <joint name="joint6" value="0"/>
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <group name="flange">
         <link name="link_6__flange"/>
     </group>
-    <end_effector name="flange" parent_link="link_6__flange" group="flange" parent_group="meca500_arm"/>
-    <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
-    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="link_0__base"/>
+    <group name="nozzle">
+        <link name="nozzle"/>
+    </group>
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="link_0__base" link2="link_1" reason="Adjacent"/>
     <disable_collisions link1="link_0__base" link2="link_2" reason="Never"/>
+    <disable_collisions link1="link_0__base" link2="link_3" reason="Never"/>
     <disable_collisions link1="link_1" link2="link_2" reason="Adjacent"/>
+    <disable_collisions link1="link_1" link2="link_3" reason="Never"/>
     <disable_collisions link1="link_2" link2="link_3" reason="Adjacent"/>
+    <disable_collisions link1="link_2" link2="link_4" reason="Never"/>
     <disable_collisions link1="link_3" link2="link_4" reason="Adjacent"/>
     <disable_collisions link1="link_3" link2="link_5" reason="Never"/>
-    <disable_collisions link1="link_3" link2="link_6__flange" reason="Never"/>
     <disable_collisions link1="link_4" link2="link_5" reason="Adjacent"/>
     <disable_collisions link1="link_4" link2="link_6__flange" reason="Never"/>
     <disable_collisions link1="link_5" link2="link_6__flange" reason="Adjacent"/>
+    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="link_0__base"/>
 </robot>

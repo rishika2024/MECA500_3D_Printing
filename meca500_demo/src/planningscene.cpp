@@ -17,7 +17,7 @@ public:
   : Node("meca500_planning_scene")
   {
     this->declare_parameter("x", 0.0);  
-    this->declare_parameter("y", 0.2);
+    this->declare_parameter("y", -0.2);
     this->declare_parameter("z", 0.00);
     this->declare_parameter("qx", 0.0);
     this->declare_parameter("qy", 0.0);
