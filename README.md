@@ -2,7 +2,7 @@
 A ROS2 package for controlling a Meca500 6DOF robot arm (5 μm resolution) to perform robotic 3D printing via MoveIt2.
 
 ## Overview
-This project bridges the Meca500 proprietary API to MoveIt2 through a custom ROS2 hardware interface, enabling real trajectory planning and execution on physical hardware. A print pipeline sweeps the robot's reachable workspace, centers and clips sliced G-code onto the densest reachable region without resizing the model, and executes it move-by-move through MoveIt2's Pilz Industrial Motion Planner (LIN for straight/extruding moves, CIRC for arcs).
+This project bridges the Meca500 proprietary API to MoveIt2 through a custom ROS2 hardware interface, enabling real trajectory planning and execution on physical hardware. A print pipeline sweeps the robot's reachable workspace, centers and clips sliced G-code onto the densest reachable region, and executes it move-by-move through MoveIt2's Pilz Industrial Motion Planner (LIN for straight/extruding moves, CIRC for arcs).
 
 ## Packages
 
@@ -10,12 +10,30 @@ This project bridges the Meca500 proprietary API to MoveIt2 through a custom ROS
 * meca500_moveit — MoveIt2 configuration and launch files
 * meca500_robot — Robot description (URDF/Xacro), including the mounted extruder end-effector and `nozzle` tool frame
 * meca500_demo — Reachability sweeping, planning scene setup, and the main print-execution node: parses G-code moves, plans them through Pilz LIN/CIRC, and recovers from occasional IK failures (Z-hop for travels, midpoint bisection for extruding moves) without skipping a commanded point
-* gcode — G-code handling: a Python preprocessing tool (centers a sliced print on the densest reachable region, drops moves outside the workspace as gaps instead of resizing, validates and repairs arc geometry) plus a C++ parser library used by the trajectory node at execution time
+* gcode — G-code handling: a Python preprocessing tool (centers a sliced print on the densest reachable region, drops moves outside the workspace as gaps, validates and repairs arc geometry) plus a C++ parser library used by the trajectory node at execution time. The number of layers to print is configurable (`-l`/`layers`, see below) — the default is all layers, or pass a smaller count to print an evenly-spaced subset for a quicker test
+
+## External Dependency: Patched Pilz Industrial Motion Planner
+
+This project builds `pilz_industrial_motion_planner` from source (from [moveit/moveit2](https://github.com/moveit/moveit2)) instead of using the stock `apt` package, with one constant changed so its CIRC arc-fitting gate matches the Meca500's 5 μm resolution instead of the stock library's much coarser industrial-scale tolerance:
+
+* `MAX_COLINEAR_NORM` (the near-degenerate-triangle rejection in `circleFromInterim`, `path_circle_generator.hpp`) lowered from the stock `1e-5` to `2.5e-11` (5 μm × 5 μm), so genuinely tiny print-scale arcs stop getting rejected as "no plane" errors
+* the trajectory node's own flatness check (`get_arc_center`/CIRC path in `meca500_demo`) mirrors that same `2.5e-11` threshold, so an arc is only demoted to a straight line when it's below what the robot can actually resolve
+
+The change is in [`patches/pilz_industrial_motion_planner.patch`](patches/pilz_industrial_motion_planner.patch). To set it up:
+```bash
+git clone https://github.com/moveit/moveit2.git
+cd moveit2
+git apply /path/to/Final_Project/patches/pilz_industrial_motion_planner.patch
+# then colcon build the moveit_planners/pilz_industrial_motion_planner package
+# into the same workspace as this repo
+```
 
 ## Setup
 <img width="3060" height="4080" alt="Full Setup" src="https://github.com/user-attachments/assets/774f2ea0-13c4-4861-8aae-b70a6dd08630" />
 
 ## Demos
+
+In the RViz views below, the **green** line is the `ee_trace` (every sampled end-effector position, travel and print alike) and the **purple** line is the `print_trace` (only the segments where the nozzle was actually extruding).
 
 * **With extruder, flat bed (Benchy)** — full print pipeline of Benchy Boat
 

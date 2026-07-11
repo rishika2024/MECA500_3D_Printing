@@ -1,0 +1,11 @@
+--- a/moveit_planners/pilz_industrial_motion_planner/include/pilz_industrial_motion_planner/path_circle_generator.hpp
++++ b/moveit_planners/pilz_industrial_motion_planner/include/pilz_industrial_motion_planner/path_circle_generator.hpp
+@@ -80,7 +80,7 @@
+   static double cosines(const double a, const double b, const double c);
+ 
+   static constexpr double MAX_RADIUS_DIFF{ 1e-2 };
+-  static constexpr double MAX_COLINEAR_NORM{ 1e-5 };
++  static constexpr double MAX_COLINEAR_NORM{ 2.5e-11 };
+ };
+ 
+ }  // namespace pilz_industrial_motion_planner
