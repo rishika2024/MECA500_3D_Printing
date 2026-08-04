@@ -1,8 +1,11 @@
 .vscode/
-meca500_robot/urdf/meca500_robot.urdf
+
 3DBenchy.gcode.3mf
 Cube.gcode.3mf
 out_boat.txt
 out.txt
 reachable_points.csv
 **/__pycache__/
+mini_cube.gcode.3mf
+mini_cube_out.txt
+Part Studio 2 - Part 1.gcode.3mf
