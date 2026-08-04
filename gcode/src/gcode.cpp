@@ -18,7 +18,10 @@ namespace gcode
             std::string value = token.substr(1);
 
             if (letter == 'G') {
-                move.cmd = "G" + value;                
+                move.cmd = "G" + value;
+            }
+            else if (letter == 'M') {
+                move.cmd = "M" + value;
             }
             else if (letter == 'X') {
                 move.x = std::stod(value);
@@ -79,7 +82,9 @@ namespace gcode
     std::string line;
 
     bool relative_mode = false;
+    bool e_relative_mode = false;
     double cur_x = 0.0, cur_y = 0.0, cur_z = 0.0;
+    double cur_e = 0.0;
 
     while (std::getline(stream, line)) {
         Move move = parse_line(line);
@@ -88,10 +93,20 @@ namespace gcode
         // G90 = absolute mode, G91 = relative mode
         if (move.cmd == "G90") {
             relative_mode = false;
-            continue; 
+            continue;
         }
         if (move.cmd == "G91") {
             relative_mode = true;
+            continue;
+        }
+        // M82 = absolute extrusion, M83 = relative extrusion -- independent
+        // of G90/G91, which only govern X/Y/Z.
+        if (move.cmd == "M82") {
+            e_relative_mode = false;
+            continue;
+        }
+        if (move.cmd == "M83") {
+            e_relative_mode = true;
             continue;
         }
 
@@ -131,9 +146,25 @@ namespace gcode
         cur_y = move.y;
         cur_z = move.z;
 
+        // Normalize move.e to a per-move delta regardless of which mode the
+        // file declares, so callers (trajectory.cpp) always get a
+        // consistent representation -- and always send relative G1 E
+        // commands to the real printer, matching program.e_relative_mode
+        // below rather than an independent hardcoded assumption.
+        if (move.has_e) {
+            if (e_relative_mode) {
+                cur_e += move.e;  // already a delta; keep cur_e in sync
+            } else {
+                double absolute_e = move.e;
+                move.e = absolute_e - cur_e;
+                cur_e = absolute_e;
+            }
+        }
+
         program.moves.push_back(move);
     }
 
+    program.e_relative_mode = e_relative_mode;
     return program;
 }
 

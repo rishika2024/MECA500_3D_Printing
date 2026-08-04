@@ -1,256 +1,174 @@
 <?xml version="1.0" ?>
-<!-- Generated using onshape-to-robot -->
-<!-- Onshape https://cad.onshape.com/documents/0427f697374fea076d1b19d0/w/ebacd5e6d06ed8cf5bc37033/e/ab0f66ae85f1418c675ddcf3 -->
-<robot name="meca500_with_extruder">
-  <!-- Link e_plate -->
-  <link name="e_plate">
+<!-- Re-rooted from the home-referenced Onshape export (doc 0427f697...,
+     e/fee9a020bbc735c7ee907f27). Tree inverted mathematically: base is root,
+     mates in Onshape untouched. Zero position = true Meca500 home. Axis
+     0 0 -1 preserves the export's rotation sense. Verified FK-equivalent to
+     the export at machine precision.
+     Arm-only: split out of robot.urdf.xacro so the Meca500 links/joints can
+     be maintained independently of the extruder (see ender3_extruder.urdf). -->
+<robot name="meca500">
+
+  <link name="link_0__base">
     <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="1e-09"/>
-      <inertia ixx="1e-09" ixy="0" ixz="0" iyy="1e-09" iyz="0" izz="1e-09"/>
+      <origin xyz="-3.11465e-05 0.0104961 -0.0502428" rpy="0 0 0"/>
+      <mass value="1.90904"/>
+      <inertia ixx="0.00285533" ixy="3.86058e-06" ixz="-1.52473e-07" iyy="0.00224755" iyz="0.000252565" izz="0.00266554"/>
     </inertial>
-    <!-- Part link_6__flange -->
     <visual>
-      <origin xyz="-0.0608105 0.020405 0.170838" rpy="-3.14159 0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/link_6__flange.stl"/>
-      </geometry>
-      <material name="link_6__flange_material">
-        <color rgba="0.74902 0.74902 0.74902 1"/>
-      </material>
+      <origin xyz="0.0155431 0 -0.00437016" rpy="0 0 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_0__base.stl"/></geometry>
+      <material name="link_0__base_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
     </visual>
     <collision>
-      <origin xyz="-0.0608105 0.020405 0.170838" rpy="-3.14159 0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/link_6__flange.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part e_plate -->
-    <visual>
-      <origin xyz="0.0320431 0.223573 0.235887" rpy="-1.5708 -0 3.14159"/>
-      <geometry>
-        <mesh filename="package://meshes/e_plate.stl"/>
-      </geometry>
-      <material name="e_plate_material">
-        <color rgba="0.917647 0.917647 0.917647 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0320431 0.223573 0.235887" rpy="-1.5708 -0 3.14159"/>
-      <geometry>
-        <mesh filename="package://meshes/e_plate.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3x10_pan_head_screw -->
-    <!-- Part m2x10杯头 -->
-    <!-- Part m3x10_pan_head_screw_2 -->
-    <!-- Part m3x10_pan_head_screw_3 -->
-    <!-- Part m2x8_socket_head_screw -->
-    <!-- Part cold_section_fan -->
-    <visual>
-      <origin xyz="0.241265 0.168418 0.4476" rpy="3.14159 -0 3.14159"/>
-      <geometry>
-        <mesh filename="package://meshes/cold_section_fan.stl"/>
-      </geometry>
-      <material name="cold_section_fan_material">
-        <color rgba="0.972549 0.529412 0.00392157 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.241265 0.168418 0.4476" rpy="3.14159 -0 3.14159"/>
-      <geometry>
-        <mesh filename="package://meshes/cold_section_fan.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3x6pan_head_screw -->
-    <!-- Part m3x6pan_head_screw_2 -->
-    <!-- Part fan_cover -->
-    <visual>
-      <origin xyz="0.0245431 0.233923 0.280387" rpy="1.5708 0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/fan_cover.stl"/>
-      </geometry>
-      <material name="fan_cover_material">
-        <color rgba="0.980392 0.713725 0.00392157 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0245431 0.233923 0.280387" rpy="1.5708 0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/fan_cover.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part nozzle_fan_duct -->
-    <visual>
-      <origin xyz="-0.00414582 0.252518 0.257822" rpy="0 1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle_fan_duct.stl"/>
-      </geometry>
-      <material name="nozzle_fan_duct_material">
-        <color rgba="0.768627 0.886275 0.952941 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="-0.00414582 0.252518 0.257822" rpy="0 1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle_fan_duct.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m2x10杯头_2 -->
-    <!-- Part nozzle_fan -->
-    <visual>
-      <origin xyz="0.0142169 0.341315 0.29699" rpy="-2.53073 0 -1.5708"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle_fan.stl"/>
-      </geometry>
-      <material name="nozzle_fan_material">
-        <color rgba="0.498039 0.498039 0.498039 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0142169 0.341315 0.29699" rpy="-2.53073 0 -1.5708"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle_fan.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3x10_pan_head_screw_4 -->
-    <!-- Part m2x8_socket_head_screw_2 -->
-    <!-- Part catheter -->
-    <visual>
-      <origin xyz="0.0607788 0.365373 0.358987" rpy="-0 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/catheter.stl"/>
-      </geometry>
-      <material name="catheter_material">
-        <color rgba="0.972549 0.529412 0.00392157 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0607788 0.365373 0.358987" rpy="-0 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/catheter.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part radiator -->
-    <visual>
-      <origin xyz="0.0155431 0.216023 0.247387" rpy="3.14159 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/radiator.stl"/>
-      </geometry>
-      <material name="radiator_material">
-        <color rgba="0.498039 0.498039 0.498039 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0155431 0.216023 0.247387" rpy="3.14159 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/radiator.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3_screw -->
-    <!-- Part m3_split_washer -->
-    <!-- Part m3_split_washer_2 -->
-    <!-- Part nozzle -->
-    <visual>
-      <origin xyz="0.0155431 0.254523 0.247387" rpy="-0 0 3.14159"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle.stl"/>
-      </geometry>
-      <material name="nozzle_material">
-        <color rgba="0.917647 0.917647 0.917647 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0155431 0.254523 0.247387" rpy="-0 0 3.14159"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3x16_pan_head_screw -->
-    <!-- Part m3x4_screw -->
-    <!-- Part m3_18_flush_head_screw -->
-    <!-- Part m3_screw_2 -->
-    <!-- Part d4_teflon_tube -->
-    <visual>
-      <origin xyz="0.0155431 0.244523 0.247387" rpy="1.5708 -0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/d4_teflon_tube.stl"/>
-      </geometry>
-      <material name="d4_teflon_tube_material">
-        <color rgba="0.498039 0.498039 0.498039 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0155431 0.244523 0.247387" rpy="1.5708 -0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/d4_teflon_tube.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part pneumatic_joint -->
-    <visual>
-      <origin xyz="0.0155431 0.206523 0.247387" rpy="3.14159 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/pneumatic_joint.stl"/>
-      </geometry>
-      <material name="pneumatic_joint_material">
-        <color rgba="0.980392 0.713725 0.00392157 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0155431 0.206523 0.247387" rpy="3.14159 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/pneumatic_joint.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3x16_pan_head_screw_2 -->
-    <!-- Part heat_block -->
-    <visual>
-      <origin xyz="0.0155431 0.254523 0.251387" rpy="0 -0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/heat_block.stl"/>
-      </geometry>
-      <material name="heat_block_material">
-        <color rgba="0.768627 0.886275 0.952941 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.0155431 0.254523 0.251387" rpy="0 -0 -0"/>
-      <geometry>
-        <mesh filename="package://meshes/heat_block.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part heater -->
-    <visual>
-      <origin xyz="0.00554307 0.249523 0.256887" rpy="1.5708 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/heater.stl"/>
-      </geometry>
-      <material name="heater_material">
-        <color rgba="0.231373 0.380392 0.705882 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.00554307 0.249523 0.256887" rpy="1.5708 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/heater.stl"/>
-      </geometry>
-    </collision>
-    <!-- Part m3_18_flush_head_screw_2 -->
-    <!-- Part nozzle_thermistor -->
-    <visual>
-      <origin xyz="0.00724307 0.252523 0.249887" rpy="-1.5708 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle_thermistor.stl"/>
-      </geometry>
-      <material name="nozzle_thermistor_material">
-        <color rgba="0.647059 0.647059 0.647059 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0.00724307 0.252523 0.249887" rpy="-1.5708 -1.5708 0"/>
-      <geometry>
-        <mesh filename="package://meshes/nozzle_thermistor.stl"/>
-      </geometry>
+      <origin xyz="0.0155431 0 -0.00437016" rpy="0 0 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_0__base.stl"/></geometry>
     </collision>
   </link>
+
+  <link name="link_1">
+    <inertial>
+      <origin xyz="0.0012589 -7.610418e-07 0.0232115" rpy="0 0 0"/>
+      <mass value="0.619419"/>
+      <inertia ixx="0.000550361" ixy="-2.50659e-08" ixz="-1.45934e-05" iyy="0.00108163" iyz="5.45289e-09" izz="0.000974018"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 -1.6345763e-07 0.0445" rpy="-1.570799 3.6732051e-06 -1.5708"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_1.stl"/></geometry>
+      <material name="link_1_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 -1.6345763e-07 0.0445" rpy="-1.570799 3.6732051e-06 -1.5708"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_1.stl"/></geometry>
+    </collision>
+  </link>
+
+  <link name="link_2">
+    <inertial>
+      <origin xyz="-0.0058745645 0.050695484 0.0318181" rpy="0 0 0"/>
+      <mass value="1.73919"/>
+      <inertia ixx="0.0052387" ixy="8.73073e-05" ixz="5.16414e-07" iyy="0.001944" iyz="5.35906e-05" izz="0.00435286"/>
+    </inertial>
+    <visual>
+      <origin xyz="1.3100773e-07 -0.04937 0.0164569" rpy="-1.5707927 1.5707927 2.6535898e-06"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_2.stl"/></geometry>
+      <material name="link_2_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="1.3100773e-07 -0.04937 0.0164569" rpy="-1.5707927 1.5707927 2.6535898e-06"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_2.stl"/></geometry>
+    </collision>
+  </link>
+
+  <link name="link_3">
+    <inertial>
+      <origin xyz="-0.0086346826 -0.013079285 0.031972351" rpy="0 0 0"/>
+      <mass value="1.00601"/>
+      <inertia ixx="0.000992666" ixy="-0.00018473" ixz="-4.31499e-06" iyy="0.000746526" iyz="-1.39099e-05" izz="0.00122325"/>
+    </inertial>
+    <visual>
+      <origin xyz="5.8612967e-08 0.18436996 0.015957389" rpy="-2.1964137 1.5707918 2.5159789"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_3.stl"/></geometry>
+      <material name="link_3_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="5.8612967e-08 0.18436996 0.015957389" rpy="-2.1964137 1.5707918 2.5159789"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_3.stl"/></geometry>
+    </collision>
+  </link>
+
+  <link name="link_4">
+    <inertial>
+      <origin xyz="-0.0012501924 6.30456e-06 0.029286305" rpy="0 0 0"/>
+      <mass value="0.314367"/>
+      <inertia ixx="0.000184016" ixy="-9.21593e-09" ixz="7.34301e-06" iyy="0.000298673" iyz="1.8395e-08" izz="0.000209158"/>
+    </inertial>
+    <visual>
+      <origin xyz="2.167191e-07 4.4e-06 0.059" rpy="-1.57079 -3.6732051e-06 1.5707963"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_4.stl"/></geometry>
+      <material name="link_4_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="2.167191e-07 4.4e-06 0.059" rpy="-1.57079 -3.6732051e-06 1.5707963"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_4.stl"/></geometry>
+    </collision>
+  </link>
+
+  <link name="link_5">
+    <inertial>
+      <origin xyz="-0.020511087 2.54851e-06 0.023742928" rpy="0 0 0"/>
+      <mass value="0.447067"/>
+      <inertia ixx="0.000149997" ixy="-2.2551e-08" ixz="9.46505e-06" iyy="0.000325043" iyz="-8.77008e-09" izz="0.000314979"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.11999985 -0.2223748 0.039793541" rpy="1.5707927 -1.5707927 3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_5.stl"/></geometry>
+      <material name="link_5_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.11999985 -0.2223748 0.039793541" rpy="1.5707927 -1.5707927 3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_5.stl"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Renamed from e_plate to link_6__flange so existing MoveIt/TF configs keep resolving -->
+  <link name="link_6__flange">
+    <inertial>
+      <origin xyz="0.0023892729 0.030714176 0.047889894" rpy="0 0 0"/>
+      <mass value="0.0621557"/>
+      <inertia ixx="4.78126e-05" ixy="1.09528e-06" ixz="-1.31699e-06" iyy="4.16512e-05" iyz="-1.34038e-05" izz="3.06279e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0.076354021 -0.051549583 -0.15859321" rpy="-1.5707953 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_6__flange.stl"/></geometry>
+      <material name="link_6__flange_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.076354021 -0.051549583 -0.15859321" rpy="-1.5707953 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_meca500_with_ender3/link_6__flange.stl"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="joint1" type="revolute">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="link_0__base"/>
+    <child link="link_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="16.6" velocity="3.927" lower="-3.0543" upper="3.0543"/>
+  </joint>
+  <joint name="joint2" type="revolute">
+    <origin xyz="0.0325 -2.8283679e-07 0.0445" rpy="1.5707963 3.6732051e-06 -1.5708"/>
+    <parent link="link_1"/>
+    <child link="link_2"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="16.6" velocity="3.927" lower="-1.2217" upper="1.5708"/>
+  </joint>
+  <joint name="joint3" type="revolute">
+    <origin xyz="-3.5823462e-07 0.135 0" rpy="0 0 -3.14159"/>
+    <parent link="link_2"/>
+    <child link="link_3"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="16.6" velocity="3.927" lower="-2.3562" upper="1.2217"/>
+  </joint>
+  <joint name="joint4" type="revolute">
+    <origin xyz="-0.060999884 -0.038000084 0.031500123" rpy="-0.62561375 1.5707918 2.5159789"/>
+    <parent link="link_3"/>
+    <child link="link_4"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="2.5" velocity="6.1087" lower="-2.9671" upper="2.9671"/>
+  </joint>
+  <joint name="joint5" type="revolute">
+    <origin xyz="-0.023999783 4.4e-06 0.059000088" rpy="3.1415927 1.5707927 3.1415927"/>
+    <parent link="link_4"/>
+    <child link="link_5"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="2.5" velocity="6.1087" lower="-2.0071" upper="2.0071"/>
+  </joint>
+  <joint name="joint6" type="revolute">
+    <origin xyz="-0.059000089 2.2e-06 0.024249783" rpy="3.1415927 -1.5707927 3.1415927"/>
+    <parent link="link_5"/>
+    <child link="link_6__flange"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1.5" velocity="8.7266" lower="-628.318" upper="628.318"/>
+  </joint>
+
 </robot>

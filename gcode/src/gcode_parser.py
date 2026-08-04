@@ -6,6 +6,22 @@ Z_CLAMP       = 0.01
 SIMPLIFY_TOL  = 0.005
 CROSS_NORM_MIN = 2.5e-5
 DENSITY_WEIGHT = 0.8
+# How much to pull the print center toward the bed's true geometric center
+# (local (0,0), from reachability.cpp's symmetric grid) instead of purely
+# where the arm's reach happens to be densest. 0 = pure reachability-based
+# (old behavior), 1 = pure bed center, ignoring reachability entirely.
+# Trade-off: raising this pushes more of the model into the side of the bed
+# the arm reaches less well, so "dropped N moves outside the reachable
+# footprint" will grow if pushed too far.
+BED_CENTER_WEIGHT = 0.5
+
+# Extrusion mode for the OUTPUT file: True writes each move's dE (per-move
+# delta) plus a leading M83 declaration; False writes cumulative E plus a
+# leading M82. trajectory.cpp reads whichever mode gcode.cpp parses back out
+# of the file (Program::e_relative_mode) and asserts the matching mode on
+# the real printer, so this is the single source of truth for both sides --
+# don't hardcode a matching assumption independently elsewhere.
+OUTPUT_RELATIVE_E = True
 
 WORD_RE = re.compile(r"([A-Z])\s*([-+]?\d*\.?\d+)")
 
@@ -76,13 +92,20 @@ def load_reach_shape(csv_path):
     
     dense_cx, dense_cy = largest_rect_center(pts, xs, ys)
     mid_cx, mid_cy = (x_min + x_max) / 2, (y_min + y_max) / 2
-    cx = DENSITY_WEIGHT * dense_cx + (1 - DENSITY_WEIGHT) * mid_cx
-    cy = DENSITY_WEIGHT * dense_cy + (1 - DENSITY_WEIGHT) * mid_cy
+    reach_cx = DENSITY_WEIGHT * dense_cx + (1 - DENSITY_WEIGHT) * mid_cx
+    reach_cy = DENSITY_WEIGHT * dense_cy + (1 - DENSITY_WEIGHT) * mid_cy
+
+    # Pull further toward the bed's true center (local (0,0)) -- reach_cx/cy
+    # above are both derived purely from the reachable region, which is
+    # skewed toward one corner, so neither is anchored to bed-center at all.
+    cx = (1 - BED_CENTER_WEIGHT) * reach_cx
+    cy = (1 - BED_CENTER_WEIGHT) * reach_cy
 
     print(f"reachable footprint: {len(pts)} points, "
           f"X[{x_min:.1f},{x_max:.1f}] Y[{y_min:.1f},{y_max:.1f}], grid step {step:.1f}mm")
     print(f"  densest region center ({dense_cx:.1f},{dense_cy:.1f}), footprint midpoint ({mid_cx:.1f},{mid_cy:.1f})")
-    print(f"  blended center ({cx:.1f},{cy:.1f}) [{DENSITY_WEIGHT:.0%} densest / {1-DENSITY_WEIGHT:.0%} midpoint]")
+    print(f"  reachability-blended center ({reach_cx:.1f},{reach_cy:.1f}) [{DENSITY_WEIGHT:.0%} densest / {1-DENSITY_WEIGHT:.0%} midpoint]")
+    print(f"  final center ({cx:.1f},{cy:.1f}) [{1-BED_CENTER_WEIGHT:.0%} reachability / {BED_CENTER_WEIGHT:.0%} bed-center]")
 
     return {"pts": pts, "step": step, "cx": cx, "cy": cy,
             "x_min": x_min, "x_max": x_max, "y_min": y_min, "y_max": y_max}
@@ -342,12 +365,13 @@ def select_layers(moves,n_layers):
     return out
 
 def fmt(moves):
-    lines=[]
+    lines=["M83" if OUTPUT_RELATIVE_E else "M82"]
     for m in moves:
         parts=[m["cmd"],f"X{m['X']:.4f}",f"Y{m['Y']:.4f}",f"Z{m['Z']:.4f}"]
         if "I" in m: parts.append(f"I{m['I']:.4f}")
         if "J" in m: parts.append(f"J{m['J']:.4f}")
-        if abs(m["E"])>1e-9 and abs(m["dE"])>1e-9: parts.append(f"E{m['E']:.4f}")
+        if abs(m["E"])>1e-9 and abs(m["dE"])>1e-9:
+            parts.append(f"E{m['dE']:.4f}" if OUTPUT_RELATIVE_E else f"E{m['E']:.4f}")
         if m["F"]>0: parts.append(f"F{m['F']:.0f}")
         lines.append(" ".join(parts))
     return lines

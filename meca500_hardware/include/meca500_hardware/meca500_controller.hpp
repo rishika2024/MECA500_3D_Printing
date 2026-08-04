@@ -19,6 +19,7 @@
 #define MECA500_HARDWARE__MECA500_SYSTEM_HPP_
 
 #include <array>
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -87,10 +88,26 @@ private:
   int control_fd = -1;
   int monitoring_fd = -1;
 
-  // Calibration offsets (degrees): URDF_angle = offset - Mecademic_angle
+  // Calibration offsets (degrees): URDF_angle = direction * (offset - Mecademic_angle)
   // Loaded from meca500_moveit/config/joint_offsets.yaml via hardware_parameters.
   std::array<double, NUM_JOINTS> joint_offsets_deg_{};
 
+  // The joint1-joint4 sign correction now lives in meca500.urdf's <axis>
+  // tags instead (flipped to "0 0 1"), so this stays at identity. Rotating
+  // by meca around the old axis (0,0,-1) is the same physical rotation as
+  // rotating by -meca around the new axis (0,0,1), so this combination
+  // reproduces the exact real-robot behavior the direction multiplier gave,
+  // while also making RViz's rendering agree with reality.
+  std::array<double, NUM_JOINTS> joint_direction_ = {1.0, -1.0, -1.0, 1.0, 1.0, 1.0};
+
+  std::vector<double> last_sent_commands_ = std::vector<double>(6, 0.0);
+
+  // Velocity is only recomputed when a new [2026] monitoring packet actually
+  // arrives (not every 10ms control cycle), using real elapsed wall-clock
+  // time since the last packet -- not the control loop period -- and a
+  // light low-pass filter, so a missed packet doesn't zero/spike velocity.
+  std::chrono::steady_clock::time_point last_packet_time_;
+  bool has_last_packet_time_ = false;
 
   // Auto-detected at runtime in on_configure()
   bool use_fake_ = true;

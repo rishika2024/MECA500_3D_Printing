@@ -2,13 +2,35 @@
 <!-- Re-rooted from the home-referenced Onshape export (doc 0427f697...).
      Tree inverted mathematically: base is root, mates in Onshape untouched.
      Zero position = true Meca500 home. Axis 0 0 -1 preserves the export's
-     rotation sense. Verified FK-equivalent to the export at machine precision. -->
+     rotation sense. Verified FK-equivalent to the export at machine precision.
+     Arm links/joints live in meca500.urdf, extruder geometry in
+     ender3_extruder.urdf; this file wires them together and adds ros2_control. -->
 <robot name="meca500" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:arg name="use_mock_hardware" default="true"/>
-  <xacro:arg name="use_extruder" default="true"/>
   <xacro:arg name="joint_offsets_file" default="$(find meca500_moveit)/config/joint_offsets.yaml"/>
   <xacro:arg name="initial_positions_file" default="$(find meca500_moveit)/config/initial_positions.yaml"/>
+
+  <!-- Extruder and background (Ender3 environment) attachments, each with a
+       toggle and a swappable urdf filename (relative to this package's urdf/
+       dir), so callers can point at a different geometry file without
+       touching this xacro. -->
+  <xacro:arg name="use_extruder" default="true"/>
+  <xacro:arg name="extruder_urdf" default="ender3_extruder.urdf"/>
+  <xacro:arg name="use_background" default="true"/>
+  <xacro:arg name="background_urdf" default="ender3_environment.urdf"/>
+
+  <!-- Mount offset of the background environment relative to link_0__base.
+       Defaults to identity (no offset) on purpose; callers that actually
+       want the environment mesh placed correctly must pass the real
+       calibration values, e.g. from a launch file. See ender3_environment.urdf
+       for where this is consumed. -->
+  <xacro:arg name="env_x" default="0"/>
+  <xacro:arg name="env_y" default="0"/>
+  <xacro:arg name="env_z" default="0"/>
+  <xacro:arg name="env_roll" default="0"/>
+  <xacro:arg name="env_pitch" default="0"/>
+  <xacro:arg name="env_yaw" default="0"/>
 
   <xacro:include filename="$(find mecha500_robot)/urdf/robot.ros2_control.xacro" />
 
@@ -16,296 +38,14 @@
     joint_offsets_file="$(arg joint_offsets_file)"
     initial_positions_file="$(arg initial_positions_file)"/>
 
-  <link name="link_0__base">
-    <inertial>
-      <origin xyz="-3.11465e-05 0.0104961 -0.0502428" rpy="0 0 0"/>
-      <mass value="1.90904"/>
-      <inertia ixx="0.00285533" ixy="3.86058e-06" ixz="-1.52473e-07" iyy="0.00224755" iyz="0.000252565" izz="0.00266554"/>
-    </inertial>
-    <visual>
-      <origin xyz="0.0155431 0 -0.00437016" rpy="0 0 0"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_0__base.stl"/></geometry>
-      <material name="link_0__base_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="0.0155431 0 -0.00437016" rpy="0 0 0"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_0__base.stl"/></geometry>
-    </collision>
-  </link>
-
-  <link name="link_1">
-    <inertial>
-      <origin xyz="0.0012589 -7.610418e-07 0.0232115" rpy="0 0 0"/>
-      <mass value="0.619419"/>
-      <inertia ixx="0.000550361" ixy="-2.50659e-08" ixz="-1.45934e-05" iyy="0.00108163" iyz="5.45289e-09" izz="0.000974018"/>
-    </inertial>
-    <visual>
-      <origin xyz="0 -1.6345763e-07 0.0445" rpy="-1.570799 3.6732051e-06 -1.5708"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_1.stl"/></geometry>
-      <material name="link_1_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="0 -1.6345763e-07 0.0445" rpy="-1.570799 3.6732051e-06 -1.5708"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_1.stl"/></geometry>
-    </collision>
-  </link>
-
-  <link name="link_2">
-    <inertial>
-      <origin xyz="-0.0058745645 0.050695484 0.0318181" rpy="0 0 0"/>
-      <mass value="1.73919"/>
-      <inertia ixx="0.0052387" ixy="8.73073e-05" ixz="5.16414e-07" iyy="0.001944" iyz="5.35906e-05" izz="0.00435286"/>
-    </inertial>
-    <visual>
-      <origin xyz="1.3100773e-07 -0.04937 0.0164569" rpy="-1.5707927 1.5707927 2.6535898e-06"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_2.stl"/></geometry>
-      <material name="link_2_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="1.3100773e-07 -0.04937 0.0164569" rpy="-1.5707927 1.5707927 2.6535898e-06"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_2.stl"/></geometry>
-    </collision>
-  </link>
-
-  <link name="link_3">
-    <inertial>
-      <origin xyz="-0.0086346826 -0.013079285 0.031972351" rpy="0 0 0"/>
-      <mass value="1.00601"/>
-      <inertia ixx="0.000992666" ixy="-0.00018473" ixz="-4.31499e-06" iyy="0.000746526" iyz="-1.39099e-05" izz="0.00122325"/>
-    </inertial>
-    <visual>
-      <origin xyz="5.8612967e-08 0.18436996 0.015957389" rpy="-2.1964137 1.5707918 2.5159789"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_3.stl"/></geometry>
-      <material name="link_3_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="5.8612967e-08 0.18436996 0.015957389" rpy="-2.1964137 1.5707918 2.5159789"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_3.stl"/></geometry>
-    </collision>
-  </link>
-
-  <link name="link_4">
-    <inertial>
-      <origin xyz="-0.0012501924 6.30456e-06 0.029286305" rpy="0 0 0"/>
-      <mass value="0.314367"/>
-      <inertia ixx="0.000184016" ixy="-9.21593e-09" ixz="7.34301e-06" iyy="0.000298673" iyz="1.8395e-08" izz="0.000209158"/>
-    </inertial>
-    <visual>
-      <origin xyz="2.167191e-07 4.4e-06 0.059" rpy="-1.57079 -3.6732051e-06 1.5707963"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_4.stl"/></geometry>
-      <material name="link_4_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="2.167191e-07 4.4e-06 0.059" rpy="-1.57079 -3.6732051e-06 1.5707963"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_4.stl"/></geometry>
-    </collision>
-  </link>
-
-  <link name="link_5">
-    <inertial>
-      <origin xyz="-0.020511087 2.54851e-06 0.023742928" rpy="0 0 0"/>
-      <mass value="0.447067"/>
-      <inertia ixx="0.000149997" ixy="-2.2551e-08" ixz="9.46505e-06" iyy="0.000325043" iyz="-8.77008e-09" izz="0.000314979"/>
-    </inertial>
-    <visual>
-      <origin xyz="0.11999985 -0.2223748 0.039793541" rpy="1.5707927 -1.5707927 3.1415927"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_5.stl"/></geometry>
-      <material name="link_5_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="0.11999985 -0.2223748 0.039793541" rpy="1.5707927 -1.5707927 3.1415927"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_5.stl"/></geometry>
-    </collision>
-  </link>
-
-  <!-- Renamed from e_plate to link_6__flange so existing MoveIt/TF configs keep resolving -->
-  <link name="link_6__flange">
-    <inertial>
-      <origin xyz="0.0023892729 0.030714176 0.047889894" rpy="0 0 0"/>
-      <mass value="0.0621557"/>
-      <inertia ixx="4.78126e-05" ixy="1.09528e-06" ixz="-1.31699e-06" iyy="4.16512e-05" iyz="-1.34038e-05" izz="3.06279e-05"/>
-    </inertial>
-    <visual>
-      <origin xyz="0.076354021 -0.051549583 -0.15859321" rpy="-1.5707953 2.6535898e-06 -3.1415927"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_6__flange.stl"/></geometry>
-      <material name="link_6__flange_material"><color rgba="0.74902 0.74902 0.74902 1"/></material>
-    </visual>
-    <collision>
-      <origin xyz="0.076354021 -0.051549583 -0.15859321" rpy="-1.5707953 2.6535898e-06 -3.1415927"/>
-      <geometry><mesh filename="package://mecha500_robot/meshes/link_6__flange.stl"/></geometry>
-    </collision>
-
-    <xacro:if value="$(arg use_extruder)">
-      <visual>
-        <origin xyz="-0.016500118 0.013500164 0.044574907" rpy="3.1415853 -5.3071796e-06 0"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/e_plate.stl"/></geometry>
-        <material name="e_plate_material"><color rgba="0.917647 0.917647 0.917647 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-0.016500118 0.013500164 0.044574907" rpy="3.1415853 -5.3071796e-06 0"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/e_plate.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-0.22572187 0.22521296 -0.010582426" rpy="1.5707953 -5.3071796e-06 0"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/cold_section_fan.stl"/></geometry>
-        <material name="cold_section_fan_material"><color rgba="0.972549 0.529412 0.00392157 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-0.22572187 0.22521296 -0.010582426" rpy="1.5707953 -5.3071796e-06 0"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/cold_section_fan.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-0.0090001457 0.058000202 0.054924763" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/fan_cover.stl"/></geometry>
-        <material name="fan_cover_material"><color rgba="0.980392 0.713725 0.00392157 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-0.0090001457 0.058000202 0.054924763" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/fan_cover.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="0.019688725 0.03543527 0.073518922" rpy="1.570799 -3.6732149e-06 -1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle_fan_duct.stl"/></geometry>
-        <material name="nozzle_fan_duct_material"><color rgba="0.768627 0.886275 0.952941 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="0.019688725 0.03543527 0.073518922" rpy="1.570799 -3.6732149e-06 -1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle_fan_duct.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="0.0013257693 0.074602596 0.16231673" rpy="1.6556419 1.570789 -0.52601704"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle_fan.stl"/></geometry>
-        <material name="nozzle_fan_material"><color rgba="0.498039 0.498039 0.498039 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="0.0013257693 0.074602596 0.16231673" rpy="1.6556419 1.570789 -0.52601704"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle_fan.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-0.045236195 0.13660068 0.18637438" rpy="1.5707937 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/catheter.stl"/></geometry>
-        <material name="catheter_material"><color rgba="0.972549 0.529412 0.00392157 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-0.045236195 0.13660068 0.18637438" rpy="1.5707937 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/catheter.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-9.8249162e-08 0.025000136 0.037024908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/radiator.stl"/></geometry>
-        <material name="radiator_material"><color rgba="0.498039 0.498039 0.498039 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-9.8249162e-08 0.025000136 0.037024908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/radiator.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-2.0041237e-07 0.025000277 0.075524908" rpy="-1.5708 0 0"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle.stl"/></geometry>
-        <material name="nozzle_material"><color rgba="0.917647 0.917647 0.917647 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-2.0041237e-07 0.025000277 0.075524908" rpy="-1.5708 0 0"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-1.7387647e-07 0.025000241 0.065524908" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/d4_teflon_tube.stl"/></geometry>
-        <material name="d4_teflon_tube_material"><color rgba="0.498039 0.498039 0.498039 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-1.7387647e-07 0.025000241 0.065524908" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/d4_teflon_tube.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-7.3040059e-08 0.025000101 0.027524908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/pneumatic_joint.stl"/></geometry>
-        <material name="pneumatic_joint_material"><color rgba="0.980392 0.713725 0.00392157 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-7.3040059e-08 0.025000101 0.027524908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/pneumatic_joint.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="-2.0041237e-07 0.029000277 0.075524893" rpy="1.5708 2.6535898e-06 -3.1415927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/heat_block.stl"/></geometry>
-        <material name="heat_block_material"><color rgba="0.768627 0.886275 0.952941 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="-2.0041237e-07 0.029000277 0.075524893" rpy="1.5708 2.6535898e-06 -3.1415927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/heat_block.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="0.0099998429 0.034500259 0.0705249" rpy="-3.1415916 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/heater.stl"/></geometry>
-        <material name="heater_material"><color rgba="0.231373 0.380392 0.705882 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="0.0099998429 0.034500259 0.0705249" rpy="-3.1415916 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/heater.stl"/></geometry>
-      </collision>
-      <visual>
-        <origin xyz="0.0082998349 0.02750027 0.073524921" rpy="-6.3268084e-06 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle_thermistor.stl"/></geometry>
-        <material name="nozzle_thermistor_material"><color rgba="0.647059 0.647059 0.647059 1"/></material>
-      </visual>
-      <collision>
-        <origin xyz="0.0082998349 0.02750027 0.073524921" rpy="-6.3268084e-06 3.6731954e-06 1.5707927"/>
-        <geometry><mesh filename="package://mecha500_robot/meshes/nozzle_thermistor.stl"/></geometry>
-      </collision>
-    </xacro:if>
-  </link>
+  <xacro:include filename="$(find mecha500_robot)/urdf/meca500.urdf" />
 
   <xacro:if value="$(arg use_extruder)">
-    
-    <link name="nozzle"/>
-    <joint name="nozzle_joint" type="fixed">
-      <origin xyz="-2.0041237e-07 0.025000277 0.075524908" rpy="0 0 0"/>
-      <parent link="link_6__flange"/>
-      <child link="nozzle"/>
-    </joint>
+    <xacro:include filename="$(find mecha500_robot)/urdf/$(arg extruder_urdf)" />
   </xacro:if>
 
-  <joint name="joint1" type="revolute">
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <parent link="link_0__base"/>
-    <child link="link_1"/>
-    <axis xyz="0 0 -1"/>
-    <limit effort="16.6" velocity="3.927" lower="-3.0543" upper="3.0543"/>
-  </joint>
-  <joint name="joint2" type="revolute">
-    <origin xyz="0.0325 -2.8283679e-07 0.0445" rpy="1.5707963 3.6732051e-06 -1.5708"/>
-    <parent link="link_1"/>
-    <child link="link_2"/>
-    <axis xyz="0 0 -1"/>
-    <limit effort="16.6" velocity="3.927" lower="-1.2217" upper="1.5708"/>
-  </joint>
-  <joint name="joint3" type="revolute">
-    <origin xyz="-3.5823462e-07 0.135 0" rpy="0 0 -3.14159"/>
-    <parent link="link_2"/>
-    <child link="link_3"/>
-    <axis xyz="0 0 -1"/>
-    <limit effort="16.6" velocity="3.927" lower="-2.3562" upper="1.2217"/>
-  </joint>
-  <joint name="joint4" type="revolute">
-    <origin xyz="-0.060999884 -0.038000084 0.031500123" rpy="-0.62561375 1.5707918 2.5159789"/>
-    <parent link="link_3"/>
-    <child link="link_4"/>
-    <axis xyz="0 0 -1"/>
-    <limit effort="2.5" velocity="6.1087" lower="-2.9671" upper="2.9671"/>
-  </joint>
-  <joint name="joint5" type="revolute">
-    <origin xyz="-0.023999783 4.4e-06 0.059000088" rpy="3.1415927 1.5707927 3.1415927"/>
-    <parent link="link_4"/>
-    <child link="link_5"/>
-    <axis xyz="0 0 -1"/>
-    <limit effort="2.5" velocity="6.1087" lower="-2.0071" upper="2.0071"/>
-  </joint>
-  <joint name="joint6" type="revolute">
-    <origin xyz="-0.059000089 2.2e-06 0.024249783" rpy="3.1415927 -1.5707927 3.1415927"/>
-    <parent link="link_5"/>
-    <child link="link_6__flange"/>
-    <axis xyz="0 0 -1"/>
-    <limit effort="1.5" velocity="8.7266" lower="-628.318" upper="628.318"/>
-  </joint>
+  <xacro:if value="$(arg use_background)">
+    <xacro:include filename="$(find mecha500_robot)/urdf/$(arg background_urdf)" />
+  </xacro:if>
+
 </robot>

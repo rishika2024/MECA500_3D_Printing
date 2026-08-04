@@ -72,12 +72,14 @@ target_link_libraries(reachability PUBLIC
   rclcpp::rclcpp
   ${geometry_msgs_TARGETS}
   ${visualization_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
   moveit_ros_planning_interface::moveit_move_group_interface
   Eigen3::Eigen
 )
 install(TARGETS reachability DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
+install(PROGRAMS src/start_print_sequence.py src/end_print_sequence.py DESTINATION share/${PROJECT_NAME})
 
 # ── tests ───
 if(BUILD_TESTING)

@@ -1,0 +1,142 @@
+<?xml version="1.0" ?>
+<!-- Extruder-only portion split out of robot.urdf.xacro. CAD source:
+     Onshape https://cad.onshape.com/documents/0427f697374fea076d1b19d0/w/ebacd5e6d06ed8cf5bc37033/e/40f98dbf9029f098f8fc39a0
+     "extruder" attaches to the Meca500 arm's link_6__flange (defined in
+     meca500.urdf) via a zero-offset fixed joint, so every part origin below
+     is unchanged from its original link_6__flange-relative value. -->
+<robot name="extruder">
+
+  <link name="extruder">
+    <visual>
+      <origin xyz="-0.016500118 0.013500164 0.044574907" rpy="3.1415853 -5.3071796e-06 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/e_plate.stl"/></geometry>
+      <material name="e_plate_material"><color rgba="0.917647 0.917647 0.917647 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.016500118 0.013500164 0.044574907" rpy="3.1415853 -5.3071796e-06 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/e_plate.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.22572187 0.22521296 -0.010582426" rpy="1.5707953 -5.3071796e-06 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/cold_section_fan.stl"/></geometry>
+      <material name="cold_section_fan_material"><color rgba="0.972549 0.529412 0.00392157 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.22572187 0.22521296 -0.010582426" rpy="1.5707953 -5.3071796e-06 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/cold_section_fan.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.0090001457 0.058000202 0.054924763" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/fan_cover.stl"/></geometry>
+      <material name="fan_cover_material"><color rgba="0.980392 0.713725 0.00392157 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0090001457 0.058000202 0.054924763" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/fan_cover.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.019688725 0.03543527 0.073518922" rpy="1.570799 -3.6732149e-06 -1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle_fan_duct.stl"/></geometry>
+      <material name="nozzle_fan_duct_material"><color rgba="0.768627 0.886275 0.952941 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.019688725 0.03543527 0.073518922" rpy="1.570799 -3.6732149e-06 -1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle_fan_duct.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0013257693 0.074602596 0.16231673" rpy="1.6556419 1.570789 -0.52601704"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle_fan.stl"/></geometry>
+      <material name="nozzle_fan_material"><color rgba="0.498039 0.498039 0.498039 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.0013257693 0.074602596 0.16231673" rpy="1.6556419 1.570789 -0.52601704"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle_fan.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.045236195 0.13660068 0.18637438" rpy="1.5707937 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/catheter.stl"/></geometry>
+      <material name="catheter_material"><color rgba="0.972549 0.529412 0.00392157 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-0.045236195 0.13660068 0.18637438" rpy="1.5707937 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/catheter.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-9.8249162e-08 0.025000136 0.037024908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/radiator.stl"/></geometry>
+      <material name="radiator_material"><color rgba="0.498039 0.498039 0.498039 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-9.8249162e-08 0.025000136 0.037024908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/radiator.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-2.0041237e-07 0.025000277 0.075524908" rpy="-1.5708 0 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle.stl"/></geometry>
+      <material name="nozzle_material"><color rgba="0.917647 0.917647 0.917647 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-2.0041237e-07 0.025000277 0.075524908" rpy="-1.5708 0 0"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-1.7387647e-07 0.025000241 0.065524908" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/d4_teflon_tube.stl"/></geometry>
+      <material name="d4_teflon_tube_material"><color rgba="0.498039 0.498039 0.498039 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-1.7387647e-07 0.025000241 0.065524908" rpy="-3.1415853 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/d4_teflon_tube.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-7.3040059e-08 0.025000101 0.027524908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/pneumatic_joint.stl"/></geometry>
+      <material name="pneumatic_joint_material"><color rgba="0.980392 0.713725 0.00392157 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-7.3040059e-08 0.025000101 0.027524908" rpy="-1.5707963 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/pneumatic_joint.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-2.0041237e-07 0.029000277 0.075524893" rpy="1.5708 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/heat_block.stl"/></geometry>
+      <material name="heat_block_material"><color rgba="0.768627 0.886275 0.952941 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="-2.0041237e-07 0.029000277 0.075524893" rpy="1.5708 2.6535898e-06 -3.1415927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/heat_block.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0099998429 0.034500259 0.0705249" rpy="-3.1415916 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/heater.stl"/></geometry>
+      <material name="heater_material"><color rgba="0.231373 0.380392 0.705882 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.0099998429 0.034500259 0.0705249" rpy="-3.1415916 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/heater.stl"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.0082998349 0.02750027 0.073524921" rpy="-6.3268084e-06 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle_thermistor.stl"/></geometry>
+      <material name="nozzle_thermistor_material"><color rgba="0.647059 0.647059 0.647059 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0.0082998349 0.02750027 0.073524921" rpy="-6.3268084e-06 3.6731954e-06 1.5707927"/>
+      <geometry><mesh filename="package://mecha500_robot/meshes_extruder/nozzle_thermistor.stl"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="extruder_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="link_6__flange"/>
+    <child link="extruder"/>
+  </joint>
+
+  <link name="nozzle"/>
+  <joint name="nozzle_joint" type="fixed">
+    <origin xyz="-2.0041237e-07 0.025000277 0.075524908" rpy="0 0 0"/>
+    <parent link="extruder"/>
+    <child link="nozzle"/>
+  </joint>
+
+</robot>

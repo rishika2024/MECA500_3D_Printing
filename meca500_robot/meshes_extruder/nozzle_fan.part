@@ -1,0 +1,13 @@
+{
+    "configuration": "default",
+    "documentId": "0427f697374fea076d1b19d0",
+    "documentMicroversion": "c66783927a95fac0eb4440cc",
+    "elementId": "815b4d10feafc94c91ada654",
+    "fullConfiguration": "default",
+    "id": "Maoj4BvMsvzvQd2aP",
+    "isStandardContent": false,
+    "name": "Nozzle fan <1>",
+    "partId": "KFzG",
+    "suppressed": false,
+    "type": "Part"
+}

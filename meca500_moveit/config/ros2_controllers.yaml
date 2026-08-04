@@ -2,6 +2,7 @@
 controller_manager:
   ros__parameters:
     update_rate: 100  # Hz
+    enforce_command_limits: false  # Trust MoveIt's joint_limits.yaml + the Meca500's own firmware limits, rather than the controller-side saturation limiter (which was clamping commands based on a noisy velocity estimate from the real robot's delayed/quantized feedback).
 
     meca500_arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -24,4 +25,5 @@ meca500_arm_controller:
     state_interfaces:
       - position
       - velocity
+    open_loop_control: true
     allow_nonzero_velocity_at_trajectory_end: true

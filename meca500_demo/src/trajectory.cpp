@@ -21,6 +21,9 @@
 #include "meca500_demo/srv/goal.hpp"
 #include <fstream>
 #include "meca500_demo/srv/gcode_file.hpp"
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
 
 using namespace std::chrono_literals;
 
@@ -32,7 +35,6 @@ public:
          rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
   {}
 
-  
   void init() {
 
     using moveit::planning_interface::MoveGroupInterface;
@@ -63,6 +65,12 @@ public:
 
     use_mock_hardware_ = this->get_parameter("use_mock_hardware").as_bool();
     RCLCPP_INFO(this->get_logger(), "Mock hardware: %s", use_mock_hardware_ ? "true" : "false");
+
+    use_extruder_ = this->get_parameter("use_extruder").as_bool();
+    RCLCPP_INFO(this->get_logger(), "Extruder: %s", use_extruder_ ? "true" : "false");
+
+    real_print_ = this->get_parameter("real_print").as_bool();
+    RCLCPP_INFO(this->get_logger(), "Real print: %s", real_print_ ? "true" : "false");
 
     //Publisher
     trace_pub_ = this->create_publisher<visualization_msgs::msg::Marker>("ee_trace", 10);
@@ -103,6 +111,24 @@ public:
       rclcpp::ServicesQoS(),
       service_cb_group_);
 
+    // End effector link threshold
+    if (use_extruder_) {
+      threshold = 0.009;
+      end_effector_link_ = "nozzle";
+    }     
+    else {
+      threshold = 0.0005;
+      end_effector_link_ = "link_6__flange";
+    }
+
+    // Deliberately NOT opening /dev/ttyUSB0 here at startup -- printer.py
+    // (run later, standalone, between reachability and this node's own
+    // gcode_file_service call) needs exclusive use of that same port to
+    // heat/prime. Holding it open for this whole node's lifetime meant the
+    // two processes fought over one serial port whenever both were live at
+    // once. open_ender()/close_ender() below claim and release it only for
+    // the duration of an actual print, in goal_callback().
+
   }
 
 private:
@@ -122,10 +148,12 @@ private:
   rclcpp::Service<meca500_demo::srv::Goal>::SharedPtr goal_server;
   rclcpp::Service<meca500_demo::srv::GcodeFile>::SharedPtr gcode_file_server;
 
+
  
   struct TrajectoryPoints{
       std::string cmd;
       double x, y, z, i, j, e, f;
+      double raw_f;
       bool has_i;
       bool has_j;
       bool has_e;
@@ -137,10 +165,28 @@ private:
   double x, y, z, qx, qy, qz, qw;
   bool moved_to_bed_ = false;
   bool use_mock_hardware_ = true;
+  std::string end_effector_link_ = "nozzle";
+  bool use_extruder_ = true;
   Eigen::Quaterniond ee_orient;
   std::vector<double> mid_point_array{0.0, 0.0, 0.0};
-  bool is_print = false;
+  bool is_print = true;
   int print_seg_id_ = 0;
+  bool print_finished = false;
+  double threshold = 0.008;
+
+  // Scales every per-move extrusion amount (goal_array.at(i).e) before it's
+  // sent to the Ender3 -- tune this if the print is over/under-extruding,
+  // rather than touching the gcode generation itself.
+  double extrusion_multiplier_ = 1.0;
+
+  int ender_fd_ = -1;
+  bool real_print_ = true;
+  // True only while a print job currently holds the ender connection open
+  // (between open_ender()/close_ender() in goal_callback()) -- distinct
+  // from real_print_, which is just the launch-time intent and shouldn't
+  // get latched false forever by one job's connection failure.
+  bool ender_ready_ = false;
+
 
   // Table Callback
   void table_callback(const visualization_msgs::msg::Marker::SharedPtr msg) {
@@ -209,9 +255,70 @@ private:
       return 0.1;
     }
   }
-  
+  // Opens /dev/ttyUSB0 for the duration of one print job -- called at the
+  // start of goal_callback(), after printer.py has already run (and closed
+  // its own connection) in the reachability -> printer.py -> trajectory
+  // pipeline, so only one process ever holds the port at a time.
+  bool open_ender() {
+    ender_fd_ = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY);
+    if (ender_fd_ < 0) {
+      RCLCPP_WARN(this->get_logger(),
+        "Print setup not connected (could not open /dev/ttyUSB0), continuing without real printing");
+      return false;
+    }
+    struct termios tty;
+    tcgetattr(ender_fd_, &tty);
+    cfsetspeed(&tty, B115200);
+    tcsetattr(ender_fd_, TCSANOW, &tty);
+    sleep(2);
+    // Discard the boot banner so the first send_ender() call can't match
+    // stale text instead of the real reply to the first command sent.
+    tcflush(ender_fd_, TCIFLUSH);
+    RCLCPP_INFO(this->get_logger(), "Ender serial open");
+    return true;
+  }
+
+  // Releases the port so printer.py can cleanly claim it again for the
+  // next print job instead of fighting trajectory for it.
+  void close_ender() {
+    if (ender_fd_ >= 0) {
+      close(ender_fd_);
+      ender_fd_ = -1;
+    }
+    ender_ready_ = false;
+  }
+
+  // ################################ Begin Citation[]###############################
+  // Blocks until the Ender3 acks the given gcode line with "ok". Only ever
+  // called when ender_ready_ is true (ender_fd_ is a live connection) --
+  // calling this with ender_fd_ == -1 would spin/hang forever.
+  void send_ender(const std::string& cmd) {
+    std::string line = cmd + "\n";
+    write(ender_fd_, line.c_str(), line.size());
+    char buf[64];
+    std::string response;
+    while (response.find("ok") == std::string::npos) {
+      int n = read(ender_fd_, buf, sizeof(buf));
+      if (n > 0){
+        response += std::string(buf, n);
+      }
+    }
+    RCLCPP_INFO(this->get_logger(), "send_ender(\"%s\") -> \"%s\"", cmd.c_str(), response.c_str());
+  }
+  // ################################ End Citation[]###############################
+
   // Function to execute a trajectory plan and trace the end-effector path
-  void execute_with_trace(moveit::planning_interface::MoveGroupInterface::Plan& plan, bool is_print) {
+  void execute_with_trace(moveit::planning_interface::MoveGroupInterface::Plan& plan,
+                           bool is_print) {
+    if (use_extruder_) {
+      threshold = 0.008;
+      end_effector_link_ = "nozzle";
+    } 
+    else {
+      threshold = 0.0025;
+      end_effector_link_ = "link_6__flange";
+    }
+
     if (use_mock_hardware_) {
       // Mock hardware never publishes /joint_states during execution — use FK on plan waypoints
       auto robot_state = std::make_shared<moveit::core::RobotState>(move_group_->getRobotModel());
@@ -222,10 +329,10 @@ private:
           robot_state->setJointPositions(jt.joint_names[j], &pt.positions[j]);
         }
         robot_state->updateLinkTransforms();
-        const Eigen::Isometry3d& ee_tf = robot_state->getGlobalLinkTransform("nozzle");
+        const Eigen::Isometry3d& ee_tf = robot_state->getGlobalLinkTransform(end_effector_link_);
         // nozzle frame is an estimated center; true tip sits 8mm further along
         // the same direction the tool points (local +Z)
-        Eigen::Vector3d tip = ee_tf.translation() + ee_tf.rotation() * Eigen::Vector3d(0, 0, 0.008);
+        Eigen::Vector3d tip = ee_tf.translation() + ee_tf.rotation() * Eigen::Vector3d(0, 0, threshold);
         double t = pt.time_from_start.sec + pt.time_from_start.nanosec * 1e-9;
         geometry_msgs::msg::Point p;
         p.x = tip.x();
@@ -283,8 +390,7 @@ private:
       });
       move_group_->execute(plan);
       tracer.join();
-    } 
-    else {
+    } else {
       // Real hardware: /joint_states updates live — poll getCurrentPose at 20 Hz
       auto& pts = plan.trajectory.joint_trajectory.points;
       double dur_sec = pts.empty() ? 5.0 :
@@ -317,13 +423,13 @@ private:
         marker_print.color.a = 1.0f;
         marker_print.lifetime = rclcpp::Duration(0, 0);
         while (std::chrono::steady_clock::now() < stop_time) {
-          auto pose = move_group_->getCurrentPose("nozzle");
+          auto pose = move_group_->getCurrentPose(end_effector_link_);
           Eigen::Quaterniond q(pose.pose.orientation.w, pose.pose.orientation.x,
                                pose.pose.orientation.y, pose.pose.orientation.z);
           Eigen::Vector3d origin(pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
           // nozzle frame is an estimated center; true tip sits 8mm further along
           // the same direction the tool points (local +Z)
-          Eigen::Vector3d tip = origin + q.toRotationMatrix() * Eigen::Vector3d(0, 0, 0.008);
+          Eigen::Vector3d tip = origin + q.toRotationMatrix() * Eigen::Vector3d(0, 0, threshold);
           geometry_msgs::msg::Point p;
           p.x = tip.x();
           p.y = tip.y();
@@ -344,41 +450,42 @@ private:
       move_group_->execute(plan);
       tracer.join();
     }
+
   }
-  
-  
+
+
   void gcode_file_callback(
       const std::shared_ptr<meca500_demo::srv::GcodeFile::Request>  req,
             std::shared_ptr<meca500_demo::srv::GcodeFile::Response> res)
-    {
-      // Read file
-      std::ifstream file(req->file_path);
-      if (!file.is_open()) {
-        RCLCPP_ERROR(this->get_logger(), "Cannot open file: %s", req->file_path.c_str());
-        res->success = false;
-        res->message = "Cannot open file: " + req->file_path;
-        res->moves_sent = 0;
-        return;
-      }
-    
-      std::string gcode((std::istreambuf_iterator<char>(file)),
-                         std::istreambuf_iterator<char>());
-      file.close();
-    
-      RCLCPP_INFO(this->get_logger(), "Loaded file: %s (%zu bytes)",
-                  req->file_path.c_str(), gcode.size());
-    
-      // Reuse goal_callback by building a Goal request
-      auto goal_req = std::make_shared<meca500_demo::srv::Goal::Request>();
-      auto goal_res = std::make_shared<meca500_demo::srv::Goal::Response>();
-      goal_req->gcode = gcode;
-    
-      goal_callback(goal_req, goal_res);
-    
-      res->success  = goal_res->success;
-      res->message  = goal_res->success ? "OK" : "goal_callback failed";
-      res->moves_sent = static_cast<int32_t>(goal_array.size());
+  {
+    // Read file
+    std::ifstream file(req->file_path);
+    if (!file.is_open()) {
+      RCLCPP_ERROR(this->get_logger(), "Cannot open file: %s", req->file_path.c_str());
+      res->success = false;
+      res->message = "Cannot open file: " + req->file_path;
+      res->moves_sent = 0;
+      return;
     }
+
+    std::string gcode((std::istreambuf_iterator<char>(file)),
+                       std::istreambuf_iterator<char>());
+    file.close();
+
+    RCLCPP_INFO(this->get_logger(), "Loaded file: %s (%zu bytes)",
+                req->file_path.c_str(), gcode.size());
+
+    // Reuse goal_callback by building a Goal request
+    auto goal_req = std::make_shared<meca500_demo::srv::Goal::Request>();
+    auto goal_res = std::make_shared<meca500_demo::srv::Goal::Response>();
+    goal_req->gcode = gcode;
+
+    goal_callback(goal_req, goal_res);
+
+    res->success  = goal_res->success;
+    res->message  = goal_res->success ? "OK" : "goal_callback failed";
+    res->moves_sent = static_cast<int32_t>(goal_array.size());
+  }
   
   // This function creates a table pose matrix from the table's position and orientation parameters
   // and then uses it to transform G-code coordinates from the table frame to the robot frame. 
@@ -392,16 +499,60 @@ private:
 
     goal_array.clear();
 
+    if (use_extruder_ && real_print_) {
+      ender_ready_ = open_ender();
+    }
+
     // Parse gcode
     gcode::Program program = gcode::parse(req->gcode);
     RCLCPP_INFO(this->get_logger(), "Parsed %zu G moves", program.size());
 
-    Eigen::Quaterniond q_table(qw, qx, qy, qz); // table orientation
-    Eigen::Vector3d t_table(x, y, z); // table position
-    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-    T.block<3,3>(0,0) = q_table.toRotationMatrix();  // rotation part
-    T.block<3,1>(0,3) = t_table;    // translation part
+    // Assert whichever extrusion mode gcode_parser.py actually declared in
+    // the file (OUTPUT_RELATIVE_E there, read back via gcode.cpp's M82/M83
+    // handling) instead of hardcoding an assumption independently here --
+    // this is the single source of truth for what the per-move G1 E
+    // deltas below assume.
+    if (ender_ready_) {
+      send_ender(program.e_relative_mode ? "M83" : "M82");
+    }
 
+    // getting the table's normal vector and center position in the world frame
+    Eigen::Quaterniond q_table(qw, qx, qy, qz); // table orientation
+    q_table.normalize();
+    Eigen::Matrix3d R_table = q_table.toRotationMatrix(); // rotation matrix of the table
+    Eigen::Vector3d table_center(x, y, z); // center of the table// vector from ee to table center
+
+    auto ee_pose = move_group_->getCurrentPose(end_effector_link_).pose;
+    Eigen::Vector3d ee_to_table_vector(ee_pose.position.x - table_center.x(),
+                                       ee_pose.position.y - table_center.y(),
+                                       ee_pose.position.z - table_center.z());
+    
+    // if the table normal is opposite to the vector from ee to table center, flip the normal
+    if (R_table.col(2).dot(ee_to_table_vector) < 0) {
+      R_table.col(2) = -R_table.col(2);
+      q_table = Eigen::Quaterniond(R_table);
+      q_table.normalize();
+    }
+
+    // Form the table's transformation matrix from its rotation and translation
+    // Build T explicitly from the flipped right-handed frame
+    Eigen::Matrix3d R_table_final = Eigen::Matrix3d::Identity();
+    
+
+    
+    // Ensure right-handed: z = x cross y
+    if ((R_table.col(0).cross(R_table.col(1)) - R_table.col(2)).norm() > 0.1) {
+      R_table.col(1) = -R_table.col(1);  // flip y to make it right-handed
+    }
+    
+    R_table_final.col(0) = R_table.col(0);  // x-axis
+    R_table_final.col(1) = R_table.col(1);  // y-axis
+    R_table_final.col(2) = R_table.col(2);  // z-axis (table normal)
+    
+    Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+    T.block<3,3>(0,0) = R_table_final;
+    T.block<3,1>(0,3) = table_center;
+  
     for (const auto& move : program.moves) {
 
         double pt_z = move.z / 1000.0; //to give a slight offset from the table surface
@@ -415,39 +566,19 @@ private:
         Eigen::Vector4d IJ_table(move.i / 1000.0, move.j / 1000.0, 0.0, 0.0);
         Eigen::Vector4d IJ_robot = T * IJ_table;   
         
-        //F
-        double f = move.f;
-        double f_scaled = f_scaling(f, move.has_f);
+        //F             
+        double f_scaled = f_scaling(move.f, move.has_f);
 
         goal_array.push_back({move.cmd, P_robot.x(), P_robot.y(), P_robot.z(),
-                              IJ_robot.x(), IJ_robot.y(), move.e, f_scaled, move.has_i,
+                              IJ_robot.x(), IJ_robot.y(), move.e, f_scaled, move.f, move.has_i,
                               move.has_j, move.has_e, move.has_f});
     }
 
     res->success = true;
 
-    // getting the table's normal vector and center position in the robot frame
-    Eigen::Matrix3d R_table = q_table.toRotationMatrix(); // rotation matrix of the table
-    Eigen::Vector3d table_center(x, y, z); // center of the table
-    Eigen::Vector3d table_normal = R_table.col(2);
-
     if (!moved_to_bed_) {
-      moved_to_bed_ = true;
-
-      // Build perpendicular orientation
-      // Pick the normal direction that points toward the robot base (world origin)
-      Eigen::Vector3d to_robot = -table_center;  // vector from table center to origin
-      if (table_normal.dot(to_robot) < 0) {
-        table_normal = -table_normal;  // flip so it points toward the robot
-      }
-      // Safety: force the tool axis to point downward so the arm reaches down
-      // and touches the table from above, instead of twisting to point up.
-
-      if (table_normal.z() > 0) {
-        table_normal = -table_normal;
-      }
-
-      Eigen::Vector3d z_ee = table_normal;
+      // Force the end-effector's z-axis to point INTO the table (opposite the build direction)
+      Eigen::Vector3d z_ee = -R_table_final.col(2);  // nozzle points INTO the table, not out
       // choose vect to be an axis that is not parallel to z_ee
       // cross product between z_ee and vect will give y_ee, which is perpendicular to z_ee and vect
       // now, x_ee is perpendicular to both z_ee and y_ee,
@@ -477,9 +608,9 @@ private:
       // try to plan and execute a trajectory for each point along the line until one succeeds
 
       for (double t = 0.05; t <= 0.35; t += 0.02) {
-        // Standoff must move away from the table, opposite table_normal (which
-        // points into the table so the tool orientation approaches correctly).
-        Eigen::Vector3d p = table_center - t * table_normal;
+        // Standoff moves OUT from the table center, along the build direction (table_normal)
+        // which for your pose also moves toward the base
+        Eigen::Vector3d p = table_center + t * R_table_final.col(2);
 
         geometry_msgs::msg::Pose target;
         target.position.x = p.x();
@@ -498,7 +629,7 @@ private:
         move_group_->setPlanningTime(10.0);
         move_group_->setMaxVelocityScalingFactor(0.5);
         move_group_->setMaxAccelerationScalingFactor(0.5);
-        move_group_->setPoseTarget(target, "nozzle");
+        move_group_->setPoseTarget(target, end_effector_link_);
 
         moveit::planning_interface::MoveGroupInterface::Plan plan;
         if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
@@ -508,19 +639,21 @@ private:
           // Wait for state monitor to update
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
           break;
+
         }
+        
         move_group_->clearPoseTargets();
       }
+      
+      moved_to_bed_ = success;
 
-      // Now reaching the first gcode point directly (not the table's own origin,
-      // which is generally a different XY position and was causing a detour/loop
-      // between this step and the first real point in the loop below)
+      // Now reaching the first gcode point       
       if (success && !goal_array.empty()) {
         geometry_msgs::msg::Pose target;
 
-        // Commanding the nozzle *frame*, which sits 8mm short of the true tip along
-        // local +Z, so pull the frame back by 8mm to land the tip on the target.
-        Eigen::Vector3d table_tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.008);
+        // Commanding the end-effector *frame*, which sits `threshold` short of the
+        // true tip along local +Z, so pull the frame back to land the tip on the target.
+        Eigen::Vector3d table_tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -threshold);
         target.position.x = goal_array.at(0).x + table_tool_offset.x();
         target.position.y = goal_array.at(0).y + table_tool_offset.y();
         target.position.z = goal_array.at(0).z + table_tool_offset.z();
@@ -534,7 +667,7 @@ private:
         move_group_->setPlanningTime(10.0);
         move_group_->setMaxVelocityScalingFactor(0.5);
         move_group_->setMaxAccelerationScalingFactor(0.5);
-        move_group_->setPoseTarget(target, "nozzle");
+        move_group_->setPoseTarget(target, end_effector_link_);
         moveit::planning_interface::MoveGroupInterface::Plan lin_to_table_plan;
         if (move_group_->plan(lin_to_table_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
           RCLCPP_INFO(this->get_logger(), "Planning to table surface SUCCESS! Executing...");
@@ -545,9 +678,9 @@ private:
     }
 
     if (moved_to_bed_) {
-      // Commanding the nozzle *frame*, which sits 8mm short of the true tip along
-      // local +Z, so pull the frame back by 8mm to land the tip on the gcode coordinate
-      Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -0.008);
+      // Commanding the end-effector *frame*, which sits `threshold` short of the
+      // true tip along local +Z, so pull the frame back to land the tip on the gcode coordinate
+      Eigen::Vector3d tool_offset = ee_orient.toRotationMatrix() * Eigen::Vector3d(0, 0, -threshold);
       for (size_t i = 0; i < goal_array.size(); i++) {
         geometry_msgs::msg::Pose target;
 
@@ -577,21 +710,55 @@ private:
           move_group_->setPlanningPipelineId("pilz_industrial_motion_planner");
           move_group_->setPlannerId("LIN");
           {
-            auto cp = move_group_->getCurrentPose("nozzle").pose;
+            auto cp = move_group_->getCurrentPose(end_effector_link_).pose;
             double dx = target.position.x - cp.position.x;
             double dy = target.position.y - cp.position.y;
             double dz = target.position.z - cp.position.z;
             double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
-            double vel = std::min(goal_array.at(i).f, std::max(0.02, 0.1 * (0.01 / std::max(dist, 0.001))));
+            double vel = std::min(goal_array.at(i).f, std::max(0.1, 0.5 * (0.01 / std::max(dist, 0.001))));
             move_group_->setMaxVelocityScalingFactor(vel);
           }
           move_group_->setMaxAccelerationScalingFactor(0.05);
-          move_group_->setPoseTarget(target, "nozzle");
-  
+          move_group_->setPoseTarget(target, end_effector_link_);
+
           moveit::planning_interface::MoveGroupInterface::Plan plan;
           if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
             RCLCPP_INFO(this->get_logger(), "LIN to point %zu SUCCESS", i);
-            execute_with_trace(plan, is_print);
+
+            if (use_extruder_ && ender_ready_ && goal_array.at(i).has_e && std::abs(goal_array.at(i).e) > 1e-6) {
+              // Match the extrusion feedrate to how long the arm's own plan
+              // takes, instead of using the gcode's raw feedrate, so the
+              // extrusion and the arm motion finish at the same time rather
+              // than one running out well before the other.
+              auto& pts = plan.trajectory.joint_trajectory.points;
+              double move_duration = pts.empty() ? 1.0 :
+                  pts.back().time_from_start.sec + pts.back().time_from_start.nanosec * 1e-9;
+              // Guard against a near-zero-duration plan (e.g. a single-
+              // waypoint trajectory) driving matched_f to something huge
+              // or infinite/NaN.
+              if (move_duration < 0.05){
+                move_duration = 0.05;
+              }
+
+              double e_val = goal_array.at(i).e * extrusion_multiplier_;
+              double matched_f = (std::abs(e_val) / move_duration) * 60.0;
+
+              RCLCPP_INFO(this->get_logger(),
+                "Extruding at point %zu: e_val=%.4f matched_f=%.2f move_duration=%.3f ender_ready_=%d",
+                i, e_val, matched_f, move_duration, ender_ready_);
+
+              std::thread extrude_thread([this, e_val, matched_f]() {
+                send_ender("G1 E" + std::to_string(e_val) + " F" + std::to_string(matched_f));
+              });
+
+              execute_with_trace(plan, is_print);  // arm on this thread
+              extrude_thread.join();               // wait for both
+            } else {
+              RCLCPP_INFO(this->get_logger(),
+                "Point %zu: extrusion skipped (use_extruder_=%d ender_ready_=%d has_e=%d e=%.4f)",
+                i, use_extruder_, ender_ready_, goal_array.at(i).has_e, goal_array.at(i).e);
+              execute_with_trace(plan, is_print);
+            }
             is_print = false;
           } else {
             RCLCPP_ERROR(this->get_logger(), "LIN to point %zu FAILED", i);
@@ -631,7 +798,7 @@ private:
             start_y = goal_array.at(i - 1).y + tool_offset.y();
             start_z = goal_array.at(i - 1).z + tool_offset.z();
           } else {
-            auto current_pose = move_group_->getCurrentPose("nozzle").pose;
+            auto current_pose = move_group_->getCurrentPose(end_effector_link_).pose;
             start_x = current_pose.position.x;
             start_y = current_pose.position.y;
             start_z = current_pose.position.z;
@@ -645,7 +812,7 @@ private:
           // skipped), don't plan an arc at all: demote to G1, since a straight
           // line to an absolute target cannot loop from anywhere.
           if (i > 0) {
-            auto live_pose = move_group_->getCurrentPose("nozzle").pose;
+            auto live_pose = move_group_->getCurrentPose(end_effector_link_).pose;
             double desync = std::hypot(live_pose.position.x - start_x,
                                         live_pose.position.y - start_y);
             if (desync > 0.0001) {  // 0.1 mm
@@ -750,7 +917,7 @@ private:
           constraints.name = "interim";
           moveit_msgs::msg::PositionConstraint pos_constraint;
           pos_constraint.header.frame_id = "world";
-          pos_constraint.link_name = "nozzle";
+          pos_constraint.link_name = end_effector_link_;
           pos_constraint.constraint_region.primitive_poses.push_back(interim_pose);
           pos_constraint.weight = 1.0;
           constraints.position_constraints.push_back(pos_constraint);
@@ -760,21 +927,46 @@ private:
           move_group_->setPlannerId("CIRC");
           move_group_->setPlanningTime(10.0);
           {
-            auto cp = move_group_->getCurrentPose("nozzle").pose;
+            auto cp = move_group_->getCurrentPose(end_effector_link_).pose;
             double dx = target.position.x - cp.position.x;
             double dy = target.position.y - cp.position.y;
             double dz = target.position.z - cp.position.z;
             double dist = std::sqrt(dx*dx + dy*dy + dz*dz);
-            double vel = std::min(goal_array.at(i).f, std::max(0.02, 0.1 * (0.01 / std::max(dist, 0.001))));
+            double vel = std::min(goal_array.at(i).f, std::max(0.1, 0.5 * (0.01 / std::max(dist, 0.001))));
             move_group_->setMaxVelocityScalingFactor(vel);
           }
           move_group_->setMaxAccelerationScalingFactor(0.05);
-          move_group_->setPoseTarget(target, "nozzle");
+          move_group_->setPoseTarget(target, end_effector_link_);
 
           moveit::planning_interface::MoveGroupInterface::Plan plan;
           if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
             RCLCPP_INFO(this->get_logger(), "%s to point %zu SUCCESS", goal_array.at(i).cmd.c_str(), i);
-            execute_with_trace(plan, is_print);
+
+            if (use_extruder_ && ender_ready_ && goal_array.at(i).has_e && goal_array.at(i).e > 1e-6) {
+              auto& pts = plan.trajectory.joint_trajectory.points;
+              double move_duration = pts.empty() ? 1.0 :
+                  pts.back().time_from_start.sec + pts.back().time_from_start.nanosec * 1e-9;
+              // Guard against a near-zero-duration plan (e.g. a single-
+              // waypoint trajectory) driving matched_f to something huge
+              // or infinite/NaN.
+              if (move_duration < 0.05) move_duration = 0.05;
+
+              double e_val = goal_array.at(i).e * extrusion_multiplier_;
+              double matched_f = (std::abs(e_val) / move_duration) * 60.0;
+
+              RCLCPP_INFO(this->get_logger(),
+                "Extruding at point %zu: e_val=%.4f matched_f=%.2f move_duration=%.3f ender_ready_=%d",
+                i, e_val, matched_f, move_duration, ender_ready_);
+
+              std::thread extrude_thread([this, e_val, matched_f]() {
+                send_ender("G1 E" + std::to_string(e_val) + " F" + std::to_string(matched_f));
+              });
+
+              execute_with_trace(plan, is_print);
+              extrude_thread.join();
+            } else {
+              execute_with_trace(plan, is_print);
+            }
             is_print = false;
           } else {
             // NEW (change 4 of 4): don't skip the point on CIRC failure. A
@@ -796,6 +988,31 @@ private:
         }
       }
     }
+    print_finished = true;
+
+    if (print_finished) {
+      RCLCPP_INFO(this->get_logger(), "Print finished, going back to home position");
+      move_group_->setPlanningPipelineId("ompl");
+      move_group_->setPlannerId("RRTConnect");
+      move_group_->setPlanningTime(5.0);
+      move_group_->setMaxVelocityScalingFactor(0.5);
+      move_group_->setMaxAccelerationScalingFactor(0.5);
+      move_group_->clearPoseTargets();
+      move_group_->setNamedTarget("Home");
+
+      moveit::planning_interface::MoveGroupInterface::Plan plan;
+      if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+        execute_with_trace(plan, is_print);
+      }
+      else {
+        RCLCPP_WARN(this->get_logger(), "Could not plan to home position");
+      }
+    }
+
+    // Release the port now that this print job is done, so printer.py can
+    // cleanly claim it again for the next one instead of fighting over it.
+    close_ender();
+
   }
 };
 

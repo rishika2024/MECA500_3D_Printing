@@ -16,7 +16,7 @@ namespace gcode
         double i = 0.0;
         double j = 0.0;
         double e = 0.0;
-        double f = 0.0;
+        double f = 0.0;        
         bool has_x = false;
         bool has_y = false;
         bool has_z = false;
@@ -29,6 +29,14 @@ namespace gcode
     struct Program
     {
         std::vector<Move> moves;
+        // Reflects the M82/M83 declaration found in the file (defaults to
+        // false/absolute if the file never declares one, matching the
+        // historical convention). Move.e is always normalized to a
+        // per-move delta by parse() regardless of this flag -- this is
+        // for the caller to know which mode to assert on the real
+        // printer to match what these deltas assume, instead of
+        // hardcoding an assumption independently of what the file says.
+        bool e_relative_mode = false;
 
         void add(const std::string& line);
         void clear();

@@ -17,6 +17,18 @@ def generate_launch_description():
             description="Meca500 monitoring port"),
         DeclareLaunchArgument("use_extruder", default_value="true",
             description="Attach the extruder end-effector meshes (true) or bare flange (false)"),
+        DeclareLaunchArgument("extruder_urdf", default_value="ender3_extruder.urdf",
+            description="Extruder urdf filename, relative to mecha500_robot/urdf/"),
+        DeclareLaunchArgument("use_background", default_value="true",
+            description="Attach the Ender3 background/environment mesh (true) or bare robot (false)"),
+        DeclareLaunchArgument("background_urdf", default_value="ender3_environment.urdf",
+            description="Background environment urdf filename, relative to mecha500_robot/urdf/"),
+        DeclareLaunchArgument("env_x", default_value="-0.1034567"),
+        DeclareLaunchArgument("env_y", default_value="-0.0740003"),
+        DeclareLaunchArgument("env_z", default_value="-0.08937016"),
+        DeclareLaunchArgument("env_roll", default_value="0"),
+        DeclareLaunchArgument("env_pitch", default_value="0"),
+        DeclareLaunchArgument("env_yaw", default_value="3.14159"),
     ]
 
     moveit_config = (
@@ -27,6 +39,15 @@ def generate_launch_description():
             "control_port":      LaunchConfiguration("control_port"),
             "monitoring_port":   LaunchConfiguration("monitoring_port"),
             "use_extruder":      LaunchConfiguration("use_extruder"),
+            "extruder_urdf":     LaunchConfiguration("extruder_urdf"),
+            "use_background":    LaunchConfiguration("use_background"),
+            "background_urdf":   LaunchConfiguration("background_urdf"),
+            "env_x":             LaunchConfiguration("env_x"),
+            "env_y":             LaunchConfiguration("env_y"),
+            "env_z":             LaunchConfiguration("env_z"),
+            "env_roll":          LaunchConfiguration("env_roll"),
+            "env_pitch":         LaunchConfiguration("env_pitch"),
+            "env_yaw":           LaunchConfiguration("env_yaw"),
         })
         .to_moveit_configs()
     )

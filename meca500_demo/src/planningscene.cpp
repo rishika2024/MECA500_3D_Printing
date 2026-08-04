@@ -16,9 +16,9 @@ public:
   Meca500PlanningScene()
   : Node("meca500_planning_scene")
   {
-    this->declare_parameter("x", 0.0);  
-    this->declare_parameter("y", -0.2);
-    this->declare_parameter("z", 0.00);
+    this->declare_parameter("x", -0.054612);  
+    this->declare_parameter("y", -0.201887);
+    this->declare_parameter("z", 0.012594);
     this->declare_parameter("qx", 0.0);
     this->declare_parameter("qy", 0.0);
     this->declare_parameter("qz", 0.0);
@@ -89,8 +89,8 @@ private:
       table.pose.orientation.y = q.y();
       table.pose.orientation.z = q.z();
       table.pose.orientation.w = q.w();
-      table.scale.x = 0.33;
-      table.scale.y = 0.33;
+      table.scale.x = 0.200;
+      table.scale.y = 0.220;
       table.scale.z = 0.001;
       table.color.r = 0.9f;
       table.color.g = 0.9f;

@@ -4,12 +4,12 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "pluginlib/class_list_macros.hpp"
 #include "rclcpp/rclcpp.hpp"
- 
+
 // Linux socket headers (for TCP communication with robot)
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
- 
+
 #include <cmath>
 #include <sstream>
 #include <string>
@@ -57,6 +57,7 @@ namespace meca500_hardware
         }
 
     }
+
 //================================================================================
 // Export state and command interfaces to the ros2_control framework.
 // These give the framework direct pointers into hw_positions_, hw_velocities_,
@@ -190,9 +191,11 @@ namespace meca500_hardware
           RCLCPP_INFO(rclcpp::get_logger("Meca500System"),
             "Robot says: %s", buffer);
 
-          // Enable real-time joint position monitoring at 15 ms intervals.
+          // Enable real-time joint position monitoring at 10 ms intervals, to
+          // match the 100Hz (10ms) ros2_control loop -- the previous 15ms
+          // interval meant most control cycles saw no new packet at all.
           // Firmware v11+ uses SetMonitoringInterval(seconds); older used SetRTCMonitoringInterval(ms).
-          std::string rtc_cmd = "SetMonitoringInterval(0.015)";
+          std::string rtc_cmd = "SetMonitoringInterval(0.01)";
           send(control_fd, rtc_cmd.c_str(), rtc_cmd.size() + 1, 0);
           char rtc_buf[256] = {0};
           recv(control_fd, rtc_buf, sizeof(rtc_buf) - 1, 0);
@@ -275,8 +278,13 @@ namespace meca500_hardware
                         size_t start = (fields.size() >= NUM_JOINTS + 1) ? 1 : 0;
                         if (fields.size() >= start + NUM_JOINTS) {
                             for (size_t i = 0; i < NUM_JOINTS; ++i) {
-                                hw_positions_.at(i) =
+                                hw_positions_.at(i) = joint_direction_[i] *
                                     (joint_offsets_deg_[i] - std::stod(fields[start + i])) * M_PI / 180.0;
+                                // Normalize to [-pi, pi] -- joint offsets (e.g. 240 deg on
+                                // joint6) can push the converted angle past the joint's
+                                // +-pi limit even though the real robot angle is valid.
+                                while (hw_positions_.at(i) >  M_PI) hw_positions_.at(i) -= 2.0 * M_PI;
+                                while (hw_positions_.at(i) < -M_PI) hw_positions_.at(i) += 2.0 * M_PI;
                             }
                             hw_commands_ = hw_positions_;
                             RCLCPP_INFO(rclcpp::get_logger("Meca500System"),
@@ -320,36 +328,52 @@ namespace meca500_hardware
         // Format: [2026][timestamp, j1, j2, j3, j4, j5, j6] in degrees
 
         std::vector<double> old_positions = hw_positions_;
+        bool parsed_ok = false;
 
-        char buf[512] = {0};
-        int bytes = recv(monitoring_fd, buf, sizeof(buf) - 1, MSG_DONTWAIT);
-        
-        if (bytes > 0) {
-            std::string response(buf, bytes);
-        
+        // Drain the socket completely instead of a single bounded recv().
+        // At 100Hz control / 10ms monitoring interval, one [2026] packet is
+        // produced per cycle -- if any cycle runs a bit late, packets queue
+        // up in the kernel buffer, and a single recv() can only ever eat
+        // into that backlog, never catch up. Looping until MSG_DONTWAIT
+        // returns nothing keeps hw_positions_ pinned to the newest packet
+        // every cycle, so a late cycle costs one cycle, not a growing lag.
+        std::string response;
+        {
+            char buf[512];
+            int bytes;
+            while ((bytes = recv(monitoring_fd, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
+                response.append(buf, bytes);
+                if (response.size() > 8192) {
+                    response.erase(0, response.size() - 8192);
+                }
+            }
+        }
+
+        if (!response.empty()) {
+
             // Find LAST [2026]
             size_t pos = std::string::npos;
             size_t search_from = 0;
-        
+
             while (true) {
                 size_t found = response.find("[2026]", search_from);
                 if (found == std::string::npos) break;
                 pos = found;
                 search_from = found + 1;
             }
-        
+
             if (pos != std::string::npos) {
-        
+
                 size_t data_start = response.find('[', pos + 6);
                 size_t data_end   = response.find(']', data_start);
-        
+
                 if (data_start != std::string::npos && data_end != std::string::npos) {
-        
+
                     std::string data = response.substr(
                         data_start + 1,
                         data_end - data_start - 1
                     );
-        
+
                     try {
                         // Split all comma-separated fields
                         std::vector<std::string> fields;
@@ -368,9 +392,15 @@ namespace meca500_hardware
                         }
 
                         for (size_t i = 0; i < NUM_JOINTS; ++i) {
-                            hw_positions_.at(i) =
+                            hw_positions_.at(i) = joint_direction_[i] *
                                 (joint_offsets_deg_[i] - std::stod(fields[start + i])) * M_PI / 180.0;
+                            // Normalize to [-pi, pi] -- joint offsets (e.g. 240 deg on
+                            // joint6) can push the converted angle past the joint's
+                            // +-pi limit even though the real robot angle is valid.
+                            while (hw_positions_.at(i) >  M_PI) hw_positions_.at(i) -= 2.0 * M_PI;
+                            while (hw_positions_.at(i) < -M_PI) hw_positions_.at(i) += 2.0 * M_PI;
                         }
+                        parsed_ok = true;
 
                     } catch (const std::exception & e) {
                         RCLCPP_WARN(
@@ -382,12 +412,26 @@ namespace meca500_hardware
                 }
             }
         }
-        // Compute velocities from position change
-        if (period.seconds() > 0.0) {
-            for (size_t i = 0; i < 6; ++i) {
-                hw_velocities_.at(i) = 
-                (hw_positions_.at(i) - old_positions.at(i)) / period.seconds();
+
+        // Only recompute velocity when a new packet actually arrived this
+        // cycle, using real elapsed time since the last packet (not the
+        // 10ms control period, which doesn't match the ~15ms monitoring
+        // rate) -- and a light low-pass filter. If no packet arrived, keep
+        // the previous velocity instead of implicitly reporting a spike/zero
+        // from a position that hasn't actually changed.
+        if (parsed_ok) {
+            auto now = std::chrono::steady_clock::now();
+            if (has_last_packet_time_) {
+                double dt = std::chrono::duration<double>(now - last_packet_time_).count();
+                if (dt > 0.0) {
+                    for (size_t i = 0; i < 6; ++i) {
+                        double v_new = (hw_positions_.at(i) - old_positions.at(i)) / dt;
+                        hw_velocities_.at(i) = 0.7 * hw_velocities_.at(i) + 0.3 * v_new;
+                    }
+                }
             }
+            last_packet_time_ = now;
+            has_last_packet_time_ = true;
         }
 
         return hardware_interface::return_type::OK;
@@ -398,31 +442,44 @@ namespace meca500_hardware
     //================================================================================
 
     hardware_interface::return_type Meca500System::write(
-      const rclcpp::Time & time, const rclcpp::Duration & period){
+    const rclcpp::Time & time, const rclcpp::Duration & period){
 
-        if (use_fake_){
-            return hardware_interface::return_type::OK;
-        }
- 
-        std::vector<double> joints_deg(6, 0.0);
-        for(size_t i = 0; i < hw_commands_.size(); ++i){
-            joints_deg.at(i) = joint_offsets_deg_[i] - hw_commands_.at(i) * 180.0 / M_PI;
-        }
-        
-       
-        // For 6 joints, command format is: MoveJoints(j1,j2,j3,j4,j5,j6) in degrees
-        std::string cmd = "MoveJoints("
-          + std::to_string(joints_deg.at(0)) + ","
-          + std::to_string(joints_deg.at(1)) + ","
-          + std::to_string(joints_deg.at(2)) + ","
-          + std::to_string(joints_deg.at(3)) + ","
-          + std::to_string(joints_deg.at(4)) + ","
-          + std::to_string(joints_deg.at(5)) + ")";
-       
-        send(control_fd, cmd.c_str(), cmd.size() + 1, 0);
-       
+    if (use_fake_){
         return hardware_interface::return_type::OK;
     }
+
+    // Only send when command has meaningfully changed
+    bool changed = false;
+    for (size_t i = 0; i < NUM_JOINTS; ++i) {
+        if (std::abs(hw_commands_.at(i) - last_sent_commands_.at(i)) > 1e-6) {
+            changed = true;
+            break;
+        }
+    }
+    if (!changed) return hardware_interface::return_type::OK;
+
+    last_sent_commands_ = hw_commands_;
+
+    std::vector<double> joints_deg(6, 0.0);
+    for(size_t i = 0; i < hw_commands_.size(); ++i){
+        double cmd = hw_commands_.at(i);
+        while (cmd >  M_PI) cmd -= 2.0 * M_PI;
+        while (cmd < -M_PI) cmd += 2.0 * M_PI;
+        joints_deg.at(i) = joint_offsets_deg_[i] - joint_direction_[i] * cmd * 180.0 / M_PI;
+    }
+
+    std::string cmd = "MoveJoints("
+        + std::to_string(joints_deg.at(0)) + ","
+        + std::to_string(joints_deg.at(1)) + ","
+        + std::to_string(joints_deg.at(2)) + ","
+        + std::to_string(joints_deg.at(3)) + ","
+        + std::to_string(joints_deg.at(4)) + ","
+        + std::to_string(joints_deg.at(5)) + ")";
+
+    send(control_fd, cmd.c_str(), cmd.size() + 1, 0);
+
+    return hardware_interface::return_type::OK;
+}
 
     //================================================================================
     //                            On Deactivate
