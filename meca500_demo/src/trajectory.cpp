@@ -231,6 +231,8 @@ private:
   bool print_finished = false;
   double threshold = 0.008;
   bool real_print = true;
+  double f_max;
+  double f_min;
 
   // Scale factor for extrusion, applied to the E value in G-code. Default is 1.0 (no scaling).
   double extrusion_multiplier = 1.0;
@@ -284,23 +286,14 @@ private:
   }
   
   // Function to scale feed rate
-  double f_scaling(double f, bool has_f) {
-    double min_f = 1.0; // mm/min
-    double max_f = 500.0; // mm/min
-
-    if (has_f) {
-      if (f < min_f) {
-        f = min_f;
-      }
-      if (f > max_f) {
-        f = max_f;
-      }
-      double slope = (max_f - f)/(f-min_f);
-      double scaled_f = (1.0 + (max_f/min_f) * slope) / (1.0 + slope);
-      return scaled_f;
-    } else {
+  double f_scaling(double f_max, double f_min, double f, bool has_f) {
+    if (!has_f) {
       return 0.1;
     }
+    if (f_max == f_min) {
+      return 0.5;
+    }
+    return std::max(0.05, (f - f_min) / (f_max - f_min));
   }
 
 
@@ -790,6 +783,13 @@ private:
       target.e = move.e;
       target.f = move.f;
       target.cmd = move.cmd;
+      if (!have_prev) {
+        f_max = move.f;
+        f_min = move.f;
+      } else {
+        if (move.f > f_max) f_max = move.f;
+        if (move.f < f_min) f_min = move.f;
+      }
 
       if (target.cmd == "G2" || target.cmd == "G3") {
         if (!have_prev) {
@@ -915,7 +915,7 @@ private:
         seg_dist.at(idx) = (p - prev_ee_pose).norm();
         prev_ee_pose = p;
 
-        double vel = f_scaling(pt.f, true);
+        double vel = f_scaling(f_max, f_min, pt.f, true);
 
         moveit_msgs::msg::MotionSequenceItem item;
         item.req.group_name = move_group->getName();
