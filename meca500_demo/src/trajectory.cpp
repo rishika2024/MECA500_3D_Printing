@@ -1240,6 +1240,31 @@ private:
           double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
           if (dur < 0.05) dur = 0.05;
           double matched_f = (std::abs(e_sum) / dur) * 60.0;
+          // Most segments here are accel-limited, not velocity-limited --
+          // confirmed empirically, neither raising Pilz's acceleration
+          // scaling (caused visible motion jank -- no jerk limiting in
+          // Pilz's trapezoidal profile) nor narrowing the slicer's speed
+          // range (verified the re-sliced gcode's F values actually
+          // changed) moved matched_f. So most raw values cluster low
+          // regardless of print settings, and a flat floor would flatten
+          // nearly the whole print to one flat rate. Rescale using the
+          // real range the reconnaissance pass discovered for this print
+          // (see just above the main loop) into this hotend's real safe
+          // volumetric range for stock Ender3 + 0.4mm nozzle + PLA
+          // (~10-12 mm^3/s before the extruder gear slips), converted to
+          // linear feed rate via the 1.75mm filament cross-section
+          // (2.4053 mm^2 -- same constant the source slicer itself uses
+          // internally) -- preserves relative differences between
+          // batches instead of collapsing them to a single number.
+          const double kMinFeedRate = 125.0;   // mm/min (5 mm^3/s / 2.4053 mm^2 * 60)
+          const double kMaxFeedRate = 175.0;   // mm/min (7 mm^3/s / 2.4053 mm^2 * 60)
+          if (matched_f_max_seen > matched_f_min_seen) {
+            double t = (matched_f - matched_f_min_seen) / (matched_f_max_seen - matched_f_min_seen);
+            t = std::max(0.0, std::min(t, 1.0));
+            matched_f = kMinFeedRate + (kMaxFeedRate - kMinFeedRate) * t;
+          } else {
+            matched_f = std::max(kMinFeedRate, std::min(matched_f, kMaxFeedRate));
+          }
           std::thread extrude_thread([this, e_sum, matched_f]() {
             send_ender("G1 E" + std::to_string(e_sum) + " F" + std::to_string(matched_f));
           });
