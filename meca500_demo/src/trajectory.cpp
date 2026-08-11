@@ -233,6 +233,12 @@ private:
   bool real_print = true;
   double f_max;
   double f_min;
+  // Real (not estimated) range of matched_f -- discovered by a plan-only
+  // reconnaissance pass over the whole print before execution starts, used
+  // to rescale each batch's extrusion feed rate into the extruder's real
+  // safe range instead of flattening most of the print to one flat number.
+  double matched_f_min_seen;
+  double matched_f_max_seen;
 
   // Scale factor for extrusion, applied to the E value in G-code. Default is 1.0 (no scaling).
   double extrusion_multiplier = 1.0;
@@ -983,6 +989,152 @@ private:
       return true;
     };
 
+    // Reconnaissance pass: plan-only (goal_msg.planning_options.plan_only
+    // is already true in plan_batch(), so nothing here ever executes)
+    // through every batch once, from wherever the arm currently is (home)
+    // -- run before the approach-to-bed sequence below, since this never
+    // touches the real robot anyway, no reason to wait at the bed for it.
+    // Purely to discover the real range of matched_f this print will
+    // produce -- needed to rescale extrusion feed rate into the
+    // extruder's real safe range (see execute_batch() further down)
+    // instead of a fixed floor that flattens most of the print to one
+    // flat rate, since most segments here are accel-limited and
+    // naturally cluster low. A batch that fails to plan here is just
+    // skipped for statistics -- this never touches execution or
+    // recovery, the real print's own recovery logic handles it properly
+    // when it actually runs.
+    // Plan (never execute) the standoff hover + move-to-first-point
+    // sequence below, purely to get a realistic starting joint state for
+    // the reconnaissance pass. Starting reconnaissance from the real
+    // current state (home) meant its first batch planned a huge,
+    // unrepresentative jump straight from home to the first gcode point
+    // -- different enough from what real execution actually does (which
+    // starts from the first gcode point, already reached via this same
+    // approach sequence) that it triggered joint-velocity-limit failures
+    // cascading through nearly every batch. This mirrors the real
+    // approach sequence exactly, just without execute_with_trace(), so
+    // the arm never actually moves here -- the real approach sequence
+    // (further below, inside if (!moved_to_bed)) still runs for real
+    // after reconnaissance finishes.
+    moveit::core::RobotState expected_state = *move_group->getCurrentState();
+    expected_state.updateLinkTransforms();
+    {
+      bool standoff_planned = false;
+      for (double t = 0.05; t <= 0.35; t += 0.02) {
+        Eigen::Vector3d p = table_center + t * R_table_final.col(2);
+        geometry_msgs::msg::Pose target;
+        target.position.x = p.x();
+        target.position.y = p.y();
+        target.position.z = p.z();
+        target.orientation.x = ee_orient.x();
+        target.orientation.y = ee_orient.y();
+        target.orientation.z = ee_orient.z();
+        target.orientation.w = ee_orient.w();
+
+        move_group->setPlanningPipelineId("ompl");
+        move_group->setPlannerId("RRTConnect");
+        move_group->setPlanningTime(10.0);
+        move_group->setMaxVelocityScalingFactor(0.5);
+        move_group->setMaxAccelerationScalingFactor(0.5);
+        move_group->setPoseTarget(target, end_effector_link);
+
+        moveit::planning_interface::MoveGroupInterface::Plan standoff_plan;
+        if (move_group->plan(standoff_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+          auto& jt = standoff_plan.trajectory.joint_trajectory;
+          if (!jt.points.empty()) {
+            for (size_t k = 0; k < jt.joint_names.size(); k++) {
+              expected_state.setJointPositions(jt.joint_names[k], &jt.points.back().positions[k]);
+            }
+            expected_state.updateLinkTransforms();
+          }
+          standoff_planned = true;
+          break;
+        }
+        move_group->clearPoseTargets();
+      }
+
+      if (standoff_planned && !trajectory_batches.empty() && !trajectory_batches.front().trajectory.empty()) {
+        const geometry_msgs::msg::Pose& target = trajectory_batches.front().trajectory.front().pose.pose;
+        move_group->setPlanningPipelineId("pilz_industrial_motion_planner");
+        move_group->setPlannerId("LIN");
+        move_group->setPlanningTime(10.0);
+        move_group->setMaxVelocityScalingFactor(0.5);
+        move_group->setMaxAccelerationScalingFactor(0.5);
+        move_group->setStartState(expected_state);
+        move_group->setPoseTarget(target, end_effector_link);
+        moveit::planning_interface::MoveGroupInterface::Plan first_point_plan;
+        if (move_group->plan(first_point_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+          auto& jt = first_point_plan.trajectory.joint_trajectory;
+          if (!jt.points.empty()) {
+            for (size_t k = 0; k < jt.joint_names.size(); k++) {
+              expected_state.setJointPositions(jt.joint_names[k], &jt.points.back().positions[k]);
+            }
+            expected_state.updateLinkTransforms();
+          }
+        }
+      }
+      // Undo the setStartState() override above -- nothing in this block
+      // actually executed, so the real approach sequence further below
+      // must still plan from the real current state (home), not this
+      // fictional "expected" one.
+      move_group->setStartStateToCurrentState();
+      move_group->clearPoseTargets();
+    }
+
+    {
+      RCLCPP_INFO(this->get_logger(), "=== Reconnaissance pass: %zu batches ===", trajectory_batches.size());
+      auto virtual_state = expected_state;
+      matched_f_min_seen = -1.0;
+      matched_f_max_seen = -1.0;
+      size_t recon_idx = 0;
+      for (auto& tb : trajectory_batches) {
+        recon_idx++;
+        RCLCPP_INFO(this->get_logger(), "Reconnaissance: planning batch %zu/%zu",
+          recon_idx, trajectory_batches.size());
+        auto& batch = tb.trajectory;
+        if (batch.empty()) continue;
+        moveit::planning_interface::MoveGroupInterface::Plan recon_plan;
+        if (!plan_batch(batch, 0, batch.size(), recon_plan, &virtual_state)) {
+          RCLCPP_WARN(this->get_logger(), "Reconnaissance: batch %zu/%zu failed to plan, skipping for statistics",
+            recon_idx, trajectory_batches.size());
+          // Still advance virtual_state to roughly where this batch's own
+          // points intended to end, via IK on the last target seeded from
+          // the current state -- otherwise the next batch gets planned
+          // assuming the arm is still wherever it was several batches
+          // ago, a huge unintended jump that's virtually guaranteed to
+          // also fail. Left unfixed, one failure cascades through every
+          // remaining batch in the print (this is what happened: the
+          // whole pass came back with no usable data at all).
+          const auto* jmg = move_group->getRobotModel()->getJointModelGroup(move_group->getName());
+          if (virtual_state.setFromIK(jmg, batch.back().pose.pose)) {
+            virtual_state.updateLinkTransforms();
+          }
+          continue;
+        }
+
+        if (tb.type != MoveType::None) {
+          double e_sum = 0.0;
+          for (auto& pt : batch) e_sum += pt.e * extrusion_multiplier;
+          auto& jt = recon_plan.trajectory.joint_trajectory.points;
+          double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
+          if (dur < 0.05) dur = 0.05;
+          double raw_matched_f = (std::abs(e_sum) / dur) * 60.0;
+          if (matched_f_min_seen < 0.0 || raw_matched_f < matched_f_min_seen) matched_f_min_seen = raw_matched_f;
+          if (raw_matched_f > matched_f_max_seen) matched_f_max_seen = raw_matched_f;
+        }
+
+        auto& jt = recon_plan.trajectory.joint_trajectory;
+        if (!jt.points.empty()) {
+          for (size_t k = 0; k < jt.joint_names.size(); k++) {
+            virtual_state.setJointPositions(jt.joint_names[k], &jt.points.back().positions[k]);
+          }
+          virtual_state.updateLinkTransforms();
+        }
+      }
+      RCLCPP_INFO(this->get_logger(), "=== Reconnaissance done: matched_f range [%.2f, %.2f] mm/min ===",
+        matched_f_min_seen, matched_f_max_seen);
+    }
+
     if (!moved_to_bed) {
       // Home -> table approach is never a print move -- is_print defaults
       // to true at construction and nothing sets it false before this is
@@ -1177,7 +1329,8 @@ private:
         if (b + 1 < trajectory_batches.size()) {
           auto remembered_state = *move_group->getCurrentState();
           // plan_batch() does FK on this via getGlobalLinkTransform() when
-          // passed as start_override, which asserts on dirty transforms.
+          // passed as start_override, which asserts on dirty transforms --
+          // same fix as virtual_state in the reconnaissance pass above.
           remembered_state.updateLinkTransforms();
           auto pause_pose = move_group->getCurrentPose(end_effector_link).pose;
 
