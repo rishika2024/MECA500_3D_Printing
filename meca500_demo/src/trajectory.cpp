@@ -1265,6 +1265,13 @@ private:
           } else {
             matched_f = std::max(kMinFeedRate, std::min(matched_f, kMaxFeedRate));
           }
+          // dur (the plan's own time_from_start) undershoots how long
+          // execute_with_trace() actually takes on the real controller --
+          // logging both here, next to MoveIt's own "Execute request
+          // accepted"/"success" timestamps, so the real gap can be pulled
+          // from roslogs and compared instead of guessed at.
+          RCLCPP_INFO(this->get_logger(), "Extrude timing: dur=%.4f e_sum=%.4f matched_f=%.2f",
+            dur, e_sum, matched_f);
           std::thread extrude_thread([this, e_sum, matched_f]() {
             send_ender("G1 E" + std::to_string(e_sum) + " F" + std::to_string(matched_f));
           });
