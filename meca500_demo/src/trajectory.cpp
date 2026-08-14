@@ -1315,6 +1315,23 @@ private:
               static_cast<int>(std::round(idle_total / kTargetSliceSec)) : 1;
             int num_pulses = std::max(pulses_for_active, pulses_for_idle);
             num_pulses = std::max(1, std::min(num_pulses, 300));
+            // The time-based targets above only ask "how finely does this
+            // batch's duration want to be sliced" -- they don't know how
+            // much material there actually is to slice. On dense top-fill
+            // lines that shrink toward a boundary (confirmed in logs:
+            // e_sum down to 0.019mm), that produced ~10 pulses of
+            // ~0.0019mm each -- under 1 stepper step at any realistic
+            // Ender3 E-steps calibration (~93-415 steps/mm), so Marlin
+            // silently drops the motion even though it replies "ok".
+            // Capping pulse count proportionally to |e_sum| (never fewer
+            // mm per pulse than kMinPulseDistance) keeps every pulse
+            // physically resolvable: plentiful material (walls) still
+            // gets finely sliced for smoothness, scarce material (fine
+            // fill lines) gets coarser, larger pulses instead of being
+            // split below the stepper's own resolution.
+            const double kMinPulseDistance = 0.02;  // mm
+            int pulses_for_distance = static_cast<int>(std::floor(std::abs(e_sum) / kMinPulseDistance));
+            num_pulses = std::max(1, std::min(num_pulses, pulses_for_distance));
             double e_piece = e_sum / num_pulses;
             double idle_per_gap = idle_total / num_pulses;
             std::thread extrude_thread([this, e_piece, matched_f, num_pulses, idle_per_gap]() {
