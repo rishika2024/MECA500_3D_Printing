@@ -1265,18 +1265,71 @@ private:
           } else {
             matched_f = std::max(kMinFeedRate, std::min(matched_f, kMaxFeedRate));
           }
-          // dur (the plan's own time_from_start) undershoots how long
-          // execute_with_trace() actually takes on the real controller --
-          // logging both here, next to MoveIt's own "Execute request
-          // accepted"/"success" timestamps, so the real gap can be pulled
-          // from roslogs and compared instead of guessed at.
-          RCLCPP_INFO(this->get_logger(), "Extrude timing: dur=%.4f e_sum=%.4f matched_f=%.2f",
-            dur, e_sum, matched_f);
-          std::thread extrude_thread([this, e_sum, matched_f]() {
-            send_ender("G1 E" + std::to_string(e_sum) + " F" + std::to_string(matched_f));
-          });
-          execute_with_trace(plan, is_print_batch);
-          extrude_thread.join();
+          // A single G1 E<amount> F<rate> command only has 2 free numbers
+          // (amount, rate) -- Marlin derives time = amount/(rate/60), so
+          // it can't simultaneously hit the slicer's real amount (e_sum),
+          // the arm's real duration (dur), AND a safe/smooth rate (125-
+          // 175) unless e_sum/dur*60 already happens to land in that
+          // band (it usually doesn't -- raw values average ~11 mm/min).
+          // Splitting e_sum into several pulses, each run at the safe
+          // rate with idle gaps between them, adds the extra degree of
+          // freedom needed to satisfy all three at once: total commanded
+          // volume across pulses == e_sum, total wall-clock time across
+          // pulses + gaps == dur, and every individual pulse's own rate
+          // stays in the mechanically-smooth range.
+          if (std::abs(e_sum) > 1e-6) {
+            // dur (the plan's own time_from_start) undershoots real
+            // execute_with_trace() time by a small, nearly-constant
+            // amount -- fit by least squares across 247 real batches
+            // spanning 3 different shapes (boat, hollow cylinder, mini
+            // cube; dur ranging 0.06s-74s): real_time = 0.064 + 1.000*dur,
+            // std only 0.015s. Scale factor is ~exactly 1.0 -- there's no
+            // real multiplicative error, just plain ROS2 action dispatch/
+            // round-trip latency (~65ms) on top of an otherwise accurate
+            // plan duration. (A much earlier fit from a 20-sample slice
+            // of the boat run alone gave 0.38 + 1.436*dur -- that was
+            // overfit noise from too small a sample, not a real effect.)
+            const double kDurFixedOverhead = 0.065;  // s, fit across 3 shapes, 247 samples
+            const double kDurScaleFactor = 1.0;      // fit across 3 shapes, 247 samples
+            double corrected_dur = kDurFixedOverhead + kDurScaleFactor * dur;
+            RCLCPP_INFO(this->get_logger(), "Extrude timing: dur=%.4f corrected_dur=%.4f e_sum=%.4f matched_f=%.2f",
+              dur, corrected_dur, e_sum, matched_f);
+            double t_active_total = std::abs(e_sum) / (matched_f / 60.0);
+            // Finely-grained pulses: a coarse 8-pulse cap left ~0.31s
+            // idle gaps between ~0.16s active bursts on real batches
+            // (confirmed directly in logs) -- long enough for each gap
+            // to show up as a visible rib/washboard mark on the actual
+            // print. Target both the active-burst duration AND the idle
+            // gap duration at ~20ms (short enough that the on/off
+            // cycling should blend into apparent continuity), taking
+            // whichever needs more pulses. Each extra pulse costs one
+            // blocking serial round trip (~4ms measured), so this does
+            // add real time on long batches -- accepted trade for
+            // smoothness. The cap is a safety valve against pathological
+            // cases (e.g. the 74s batch seen in calibration data), not a
+            // normal-case constraint.
+            const double kTargetSliceSec = 0.02;
+            double idle_total = std::max(0.0, corrected_dur - t_active_total);
+            int pulses_for_active = static_cast<int>(std::round(t_active_total / kTargetSliceSec));
+            int pulses_for_idle = idle_total > 0.0 ?
+              static_cast<int>(std::round(idle_total / kTargetSliceSec)) : 1;
+            int num_pulses = std::max(pulses_for_active, pulses_for_idle);
+            num_pulses = std::max(1, std::min(num_pulses, 300));
+            double e_piece = e_sum / num_pulses;
+            double idle_per_gap = idle_total / num_pulses;
+            std::thread extrude_thread([this, e_piece, matched_f, num_pulses, idle_per_gap]() {
+              for (int i = 0; i < num_pulses; i++) {
+                send_ender("G1 E" + std::to_string(e_piece) + " F" + std::to_string(matched_f));
+                if (idle_per_gap > 0.0) {
+                  std::this_thread::sleep_for(std::chrono::duration<double>(idle_per_gap));
+                }
+              }
+            });
+            execute_with_trace(plan, is_print_batch);
+            extrude_thread.join();
+          } else {
+            execute_with_trace(plan, is_print_batch);
+          }
         } else {
           execute_with_trace(plan, is_print_batch);
         }
