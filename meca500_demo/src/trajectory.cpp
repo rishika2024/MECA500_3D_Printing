@@ -1447,10 +1447,27 @@ private:
           // (see build_batches() -- zigzag support/infill legitimately flips
           // MoveType almost every point), so most "batch boundaries" here are
           // a ~0.5mm corner nudge, not a real travel move. Retreating,
-          // retracting, and replanning for that is pure overhead. Skip the
-          // whole pause cycle when the next batch starts essentially where
-          // this one ended.
-          const double kSkipPauseDist = 0.003;  // 3mm
+          // retracting, and replanning for that is pure overhead and is what
+          // made the pause-transition retract fire often enough to starve
+          // extrusion. Skip the whole pause cycle when the next batch starts
+          // essentially where this one ended.
+          //
+          // 3mm was too low -- measured directly from a real print's gap
+          // distribution (out_mini_cube.txt, 1180 batch boundaries):
+          // adjacent infill lines land at 6-8mm apart (matches the grid
+          // infill's own line spacing: 2*line_width/density = 2*0.45/0.15
+          // = 6mm), with a clean empty gap in the data between 8mm and
+          // 10mm before the next cluster (wall-loop/corner transitions,
+          // 10mm+). At 3mm, every single infill-line-to-infill-line
+          // transition triggered the full retract/hop/re-home/replan
+          // cycle -- confirmed in logs, 454 firings across only 1181
+          // batches (~38%), each several seconds of overhead and an
+          // extra 1mm retract/unretract stacked on top of the gcode's
+          // own retracts. 9mm sits in the natural gap between the
+          // infill-spacing cluster and the next one, so routine
+          // infill-to-infill travel is skipped while genuinely larger
+          // moves still get the pause/re-home treatment.
+          const double kSkipPauseDist = 0.009;  // 9mm
 
           if (gap < kSkipPauseDist) {
             have_pending_plan = plan_batch(next_batch, 0, next_batch.size(), pending_plan, &remembered_state);
