@@ -359,6 +359,24 @@ private:
   }
   // ################################ End Citation[]###############################
 
+ 
+  // keep moving the bed position to home so that if it moves during the print
+  // it can be corrected. Bare G28 isn't a recognized command on this
+  // firmware, so this drives directly to the known-good position (read via
+  // M114 with the bed manually set correctly) instead of homing to an
+  // endstop.
+  void home_bed(bool e_relative_mode) {
+    if (use_extruder && ender_ready) {
+      send_ender("G90");
+      // G90 resets E to absolute mode too, not just X/Y/Z -- re-assert
+      // whatever mode the gcode file declared or every subsequent
+      // relative-delta G1 E from execute_batch() gets silently
+      // reinterpreted as an absolute E target instead.
+      send_ender(e_relative_mode ? "M83" : "M82");
+      send_ender("G1 X-3.00 Y-10.00 F1200");
+    }
+  }
+
   // Function to execute a trajectory plan and trace the end-effector path
   void execute_with_trace(moveit::planning_interface::MoveGroupInterface::Plan& plan,
                            bool is_print) {
@@ -691,6 +709,13 @@ private:
     if (ender_ready) {
       send_ender(program.e_relative_mode ? "M83" : "M82");
     }
+
+    // Re-home the bed's Y axis to its true physical reference *before*
+    // reading the table pose below -- the whole print's coordinate
+    // transform gets built from this one table_marker snapshot, so it
+    // needs to reflect the bed's real resting position, not wherever it
+    // happened to drift to from the last print.
+    home_bed(program.e_relative_mode);
 
     // getting the table's normal vector and center position in the world frame
     Eigen::Quaterniond q_table(qw, qx, qy, qz); // table orientation
@@ -1490,6 +1515,12 @@ private:
             if (move_group->plan(hop_up_plan) == moveit::core::MoveItErrorCode::SUCCESS) {
               execute_with_trace(hop_up_plan, false);
             }
+
+            // Arm is parked clear of the bed right now -- the safe window to
+            // re-home Y without it being anywhere near the bed's travel.
+            // Only at real pauses (not every batch, see kSkipPauseDist
+            // above), so this doesn't turn into constant homing overhead.
+            home_bed(program.e_relative_mode);
 
             have_pending_plan = plan_batch(next_batch, 0, next_batch.size(), pending_plan, &remembered_state);
 
