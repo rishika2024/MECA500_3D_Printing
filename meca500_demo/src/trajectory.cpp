@@ -1,7 +1,11 @@
+#include <algorithm>
 #include <atomic>
+#include <cstdlib>
+#include <ctime>
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
@@ -239,6 +243,17 @@ private:
   // safe range instead of flattening most of the print to one flat number.
   double matched_f_min_seen;
   double matched_f_max_seen;
+  // Every raw matched_f seen during reconnaissance (sorted after the pass
+  // completes) -- min/max alone collapse the print's real rate distribution
+  // to a straight line, which is what was crushing fine-detail variation.
+  // Measured on mini_cube: 33% of points sit under 15mm/min (fine-detail/
+  // corners), 51% sit at 30-60 (bulk walls), only 6% reach 60-95 (long
+  // straight runs) -- three separated clusters, not a smooth spread. Sorted
+  // samples let each batch be placed by rank (percentile) instead of by
+  // raw value, so the target range gets divided up by how many batches
+  // actually need each speed tier, not by absolute distance from the
+  // extremes.
+  std::vector<double> matched_f_samples_seen;
 
   // Scale factor for extrusion, applied to the E value in G-code. Default is 1.0 (no scaling).
   double extrusion_multiplier = 1.0;
@@ -357,8 +372,7 @@ private:
     }
     RCLCPP_INFO(this->get_logger(), "send_ender(\"%s\") -> \"%s\"", cmd.c_str(), response.c_str());
   }
-  // ################################ End Citation[]###############################
-
+ 
  
   // keep moving the bed position to home so that if it moves during the print
   // it can be corrected. Bare G28 isn't a recognized command on this
@@ -376,6 +390,9 @@ private:
       send_ender("G1 X-3.00 Y-10.00 F1200");
     }
   }
+
+   // ################################ End Citation[]###############################
+
 
   // Function to execute a trajectory plan and trace the end-effector path
   void execute_with_trace(moveit::planning_interface::MoveGroupInterface::Plan& plan,
@@ -445,8 +462,8 @@ private:
             std::lock_guard<std::mutex> lock(last_joint_state_mutex);
             last_joint_state.name = joint_trajectory_copy.joint_names;
             last_joint_state.position = std::vector<double>(
-              joint_trajectory_copy.points[idx].positions.begin(),
-              joint_trajectory_copy.points[idx].positions.end());
+              joint_trajectory_copy.points.at(idx).positions.begin(),
+              joint_trajectory_copy.points.at(idx).positions.end());
           }
           trace_points.push_back(p);
           marker_ee.header.stamp = this->now();
@@ -984,8 +1001,24 @@ private:
         }
 
         if (i > start && i < end - 1) {
-          // Blend radius is 30% of the smaller of the two adjacent segment lengths, capped at 2mm
-          item.blend_radius = std::min(std::min(seg_dist.at(idx), seg_dist.at(idx + 1)) * 0.3, 0.002);
+          // A flat 30% blend is scale-invariant, which is exactly the
+          // problem on very short segments: fine sharp-cornered detail
+          // (e.g. the ~0.5mm comb-teeth a monotonic top-fill pattern
+          // produces near a corner, alternating direction almost
+          // perpendicular each step) gets a blend radius that's still
+          // 30% of its own tiny length, rounding off a real fraction of
+          // the intended sharp zigzag -- the old unbatched, per-point
+          // execution never blended at all, so this is a real regression
+          // batching introduced for exactly this kind of feature.
+          // Scale the blend fraction itself by segment length against a
+          // 5mm reference (a typical wall/infill segment, where the full
+          // 30% is the smoothing this was designed for): short segments
+          // get a near-zero fraction instead of the same 30%, long ones
+          // approach the original behavior.
+          double min_seg = std::min(seg_dist.at(idx), seg_dist.at(idx + 1));
+          const double kBlendReferenceLength = 0.005;  // 5mm
+          double blend_fraction = std::min(0.3, (min_seg / kBlendReferenceLength) * 0.3);
+          item.blend_radius = std::min(min_seg * blend_fraction, 0.002);
         }
         seq_req.items.push_back(item);
       }
@@ -1111,6 +1144,7 @@ private:
       auto virtual_state = expected_state;
       matched_f_min_seen = -1.0;
       matched_f_max_seen = -1.0;
+      matched_f_samples_seen.clear();
       size_t recon_idx = 0;
       for (auto& tb : trajectory_batches) {
         recon_idx++;
@@ -1140,12 +1174,50 @@ private:
         if (tb.type != MoveType::None) {
           double e_sum = 0.0;
           for (auto& pt : batch) e_sum += pt.e * extrusion_multiplier;
+          // Zigzag/crosshatch infill lines shrink toward zero length at the
+          // two off-diagonal corners of a square -- confirmed directly in
+          // the sliced gcode itself (e.g. E=0.0189mm on a real top-solid-
+          // infill corner segment on mini_cube), not something this
+          // pipeline introduces; lines parallel to one diagonal necessarily
+          // taper to nothing at the two corners not on that diagonal. At
+          // the confirmed 93 steps/mm E calibration (read via M503), that's
+          // ~2 steps -- comfortably small enough to disappear into
+          // backlash/rounding on real hardware even though the command
+          // goes out correctly (confirmed: the roslog shows the pulse
+          // sent, matching the gcode's own E value exactly). Floor genuine
+          // print batches at 30 steps (~0.323mm) so no single command is
+          // that marginal -- a deliberate small deviation from the
+          // slicer's literal amount at just the handful of near-zero
+          // segments per corner per top-solid layer, not a volume-
+          // preserving rescale like the rate mapping below. (Was 20 steps
+          // / ~0.215mm -- confirmed on a real print that this shrank the
+          // dropout area by 3-4mm but didn't fully clear it, so raised to
+          // 30. Tried 40 next, but checked directly against real roslogs
+          // (hollow_cylinder_grid and Benchy) and found 30 already floors
+          // every genuinely-near-zero corner-taper segment (86% of what
+          // 40 was catching were legitimate short support/infill
+          // segments in the 0.24-0.36mm range, not tapering-to-zero --
+          // 40 was over-extruding those and visibly tangling Benchy's
+          // support). Back to 30; the remaining cylinder dropout wasn't
+          // a floor problem at all -- floor stays here, that one needs a
+          // different fix.
+          const double kMinVisibleESteps = 30.0;
+          const double kEStepsPerMm = 93.0;  // from M503, this printer
+          const double kMinPrintESum = kMinVisibleESteps / kEStepsPerMm;  // ~0.323mm
+          if (tb.type == MoveType::Print && std::abs(e_sum) > 1e-6 && std::abs(e_sum) < kMinPrintESum) {
+            e_sum = std::copysign(kMinPrintESum, e_sum);
+          }
           auto& jt = recon_plan.trajectory.joint_trajectory.points;
           double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
           if (dur < 0.05) dur = 0.05;
           double raw_matched_f = (std::abs(e_sum) / dur) * 60.0;
           if (matched_f_min_seen < 0.0 || raw_matched_f < matched_f_min_seen) matched_f_min_seen = raw_matched_f;
           if (raw_matched_f > matched_f_max_seen) matched_f_max_seen = raw_matched_f;
+          // Retract batches get their own fixed fast rate below (see the
+          // rescale block), never the reconnaissance-derived percentile
+          // rescale -- keep them out of the sample population so they
+          // can't skew the forward-print rank distribution.
+          if (tb.type != MoveType::Retract) matched_f_samples_seen.push_back(raw_matched_f);
         }
 
         auto& jt = recon_plan.trajectory.joint_trajectory;
@@ -1156,8 +1228,10 @@ private:
           virtual_state.updateLinkTransforms();
         }
       }
-      RCLCPP_INFO(this->get_logger(), "=== Reconnaissance done: matched_f range [%.2f, %.2f] mm/min ===",
-        matched_f_min_seen, matched_f_max_seen);
+      std::sort(matched_f_samples_seen.begin(), matched_f_samples_seen.end());
+      RCLCPP_INFO(this->get_logger(), "=== Reconnaissance done: matched_f range [%.2f, %.2f] mm/min, "
+        "%zu forward-print samples for percentile rescale ===",
+        matched_f_min_seen, matched_f_max_seen, matched_f_samples_seen.size());
     }
 
     if (!moved_to_bed) {
@@ -1261,10 +1335,26 @@ private:
         if (use_extruder && ender_ready && type != MoveType::None) {
           double e_sum = 0.0;
           for (size_t i = start; i < end; i++) e_sum += batch.at(i).e * extrusion_multiplier;
+          // See matching note in the reconnaissance pass above -- corner-
+          // taper segments in zigzag infill can command E as small as a
+          // couple stepper steps (93 steps/mm confirmed via M503), small
+          // enough to vanish into backlash/rounding on real hardware even
+          // though the command is sent correctly.
+          const double kMinVisibleESteps = 30.0;
+          const double kEStepsPerMm = 93.0;  // from M503, this printer
+          const double kMinPrintESum = kMinVisibleESteps / kEStepsPerMm;  // ~0.323mm
+          if (type == MoveType::Print && std::abs(e_sum) > 1e-6 && std::abs(e_sum) < kMinPrintESum) {
+            double e_sum_before_floor = e_sum;
+            e_sum = std::copysign(kMinPrintESum, e_sum);
+            RCLCPP_INFO(this->get_logger(),
+              "Corner-taper floor: e_sum %.4f -> %.4f (below %.3fmm / %.0f steps min)",
+              e_sum_before_floor, e_sum, kMinPrintESum, kMinVisibleESteps);
+          }
           auto& jt = plan.trajectory.joint_trajectory.points;
           double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
           if (dur < 0.05) dur = 0.05;
           double matched_f = (std::abs(e_sum) / dur) * 60.0;
+          double raw_matched_f_precheck = matched_f;
           // Most segments here are accel-limited, not velocity-limited --
           // confirmed empirically, neither raising Pilz's acceleration
           // scaling (caused visible motion jank -- no jerk limiting in
@@ -1281,19 +1371,90 @@ private:
           // (2.4053 mm^2 -- same constant the source slicer itself uses
           // internally) -- preserves relative differences between
           // batches instead of collapsing them to a single number.
-          const double kMinFeedRate = 125.0;   // mm/min (5 mm^3/s / 2.4053 mm^2 * 60)
-          const double kMaxFeedRate = 175.0;   // mm/min (7 mm^3/s / 2.4053 mm^2 * 60)
-          if (matched_f_max_seen > matched_f_min_seen) {
-            double t = (matched_f - matched_f_min_seen) / (matched_f_max_seen - matched_f_min_seen);
-            t = std::max(0.0, std::min(t, 1.0));
-            matched_f = kMinFeedRate + (kMaxFeedRate - kMinFeedRate) * t;
+          if (type == MoveType::Retract) {
+            // Retraction is the opposite problem from forward printing:
+            // it's a reverse pull meant to relieve nozzle pressure
+            // quickly, before a travel move starts, not a slow
+            // controlled push through a hot nozzle -- normal printers
+            // retract at 25-45mm/s (1500-2700 mm/min) specifically
+            // because fast pressure relief is what prevents oozing
+            // during the travel that follows. Capping it at the same
+            // 125-175 range validated for forward flow (measured
+            // directly: a real retract here was landing at matched_f=175
+            // -> 2.92mm/s, ~10x slower than normal retraction speed)
+            // left the melt pressure not relieved fast enough before
+            // the subsequent travel, causing stringing there -- the old
+            // unbatched code never had this problem because retraction
+            // speed just fell out of the raw e_val/duration math,
+            // unclamped, instead of being forced into the forward-flow-
+            // safe band.
+            matched_f = 1500.0;  // mm/min, low end of typical retraction speed
           } else {
-            matched_f = std::max(kMinFeedRate, std::min(matched_f, kMaxFeedRate));
+            // Linear min-max rescale measurably broke fine detail: on
+            // mini_cube the raw distribution spans ~37x (2.56-95.55
+            // mm/min in the old unbatched code's own numbers) but a
+            // straight line into 125-175 compressed it to ~1.1x
+            // (125.00-141.55) -- almost the whole print landing on
+            // nearly the same rate whether the segment was a tight comb
+            // corner or a long bulk wall run. Two problems, fixed
+            // separately:
+            //  1) kMinFeedRate was 125, picked for symmetry with the 175
+            //     ceiling, not from any hard constraint -- 175 IS real
+            //     (7 mm^3/s hotend melt-rate ceiling: go faster and the
+            //     hotend physically can't melt fast enough). Nothing
+            //     stops the hotend running slower than 125; the old
+            //     unbatched code proved it directly, running real
+            //     segments as slow as 2.56mm/min raw/unprotected with
+            //     the smoothest top surface and crispest seam seen all
+            //     project. New code has strictly more low-rate
+            //     protection now (the pulse-train + 0.02mm min-pulse-
+            //     distance floor below) than old code ever had, so a
+            //     lower floor is safer here than it was there. Dropped
+            //     to 17.5 -- close to where the real distribution's own
+            //     trough sits (see below) -- leaving 175 untouched.
+            //  2) Even with a wider floor, a straight line still favors
+            //     whichever raw values are numerically far from the
+            //     population, not whichever are actually common.
+            //     Measured on mini_cube: the raw distribution isn't
+            //     smooth, it's three clusters -- 33% of batches under
+            //     15mm/min (fine detail/corners), a trough at 15-30
+            //     (1.5% of batches), 51% at 30-60 (bulk walls), a thin
+            //     tail at 60-95 (6%, long straight runs). Fit and
+            //     compared linear, log-scale, gamma (0.25 and 0.4), and
+            //     percentile-rank against this real distribution: log
+            //     and gamma both pull the entire slow cluster up past
+            //     the halfway point of the target range (log-scale maps
+            //     the slow cluster's own top edge to 92/175, gamma=0.25
+            //     to 111/175), leaving comparatively little target range
+            //     for the 57% of batches that are bulk+fast. Percentile-
+            //     rank -- place each batch by its rank in the sorted
+            //     reconnaissance sample, not its raw value -- was the
+            //     only one of the four that's shape-free (adapts to
+            //     whatever clustering a given print's own geometry
+            //     produces instead of assuming a curve shape up front)
+            //     and it mathematically maximizes the minimum separation
+            //     between any two differently-ranked batches, which is
+            //     exactly the property that was missing.
+            const double kMinFeedRate = 17.5;   // mm/min -- soft floor, see note above (not a hard hotend limit)
+            const double kMaxFeedRate = 165.0;  // mm/min (7 mm^3/s / 2.4053 mm^2 * 60) -- real hotend ceiling, unchanged
+            if (matched_f_samples_seen.size() > 1) {
+              auto rank_it = std::upper_bound(matched_f_samples_seen.begin(), matched_f_samples_seen.end(), matched_f);
+              double rank_frac = static_cast<double>(rank_it - matched_f_samples_seen.begin()) /
+                static_cast<double>(matched_f_samples_seen.size());
+              matched_f = kMinFeedRate + (kMaxFeedRate - kMinFeedRate) * rank_frac;
+              RCLCPP_INFO(this->get_logger(),
+                "Percentile rescale: raw_matched_f=%.2f rank=%.4f (%zu/%zu samples) -> matched_f=%.2f",
+                raw_matched_f_precheck, rank_frac,
+                static_cast<size_t>(rank_it - matched_f_samples_seen.begin()),
+                matched_f_samples_seen.size(), matched_f);
+            } else {
+              matched_f = std::max(kMinFeedRate, std::min(matched_f, kMaxFeedRate));
+            }
           }
           // A single G1 E<amount> F<rate> command only has 2 free numbers
           // (amount, rate) -- Marlin derives time = amount/(rate/60), so
           // it can't simultaneously hit the slicer's real amount (e_sum),
-          // the arm's real duration (dur), AND a safe/smooth rate (125-
+          // the arm's real duration (dur), AND a safe/smooth rate (17.5-
           // 175) unless e_sum/dur*60 already happens to land in that
           // band (it usually doesn't -- raw values average ~11 mm/min).
           // Splitting e_sum into several pulses, each run at the safe
@@ -1320,6 +1481,48 @@ private:
             RCLCPP_INFO(this->get_logger(), "Extrude timing: dur=%.4f corrected_dur=%.4f e_sum=%.4f matched_f=%.2f",
               dur, corrected_dur, e_sum, matched_f);
             double t_active_total = std::abs(e_sum) / (matched_f / 60.0);
+            if (type == MoveType::Retract) {
+              // Retraction needs one continuous pull, not several --
+              // splitting it into multiple separate G1 commands (the way
+              // forward-print pulses are, even with zero idle gap between
+              // them) means Marlin plans each as its own motion block:
+              // decelerate to zero, dispatch over serial, re-accelerate
+              // from zero for the next one. A single undivided pull never
+              // decelerates in the middle. Measured directly: old
+              // unbatched code always sent retraction as one G1 (matching
+              // the gcode's own single E value) and never strings; this
+              // architecture was splitting every retract into exactly 2
+              // pulses (confirmed across all 250 retracts in a real
+              // mini_cube print) despite matching total retract volume
+              // and a faster top speed than old code -- segmented pulls
+              // are a known real cause of stringing independent of both
+              // of those, since each restart has to re-overcome extruder
+              // gear backlash and whatever back-pressure the first pulse
+              // achieved can partially relax before the second continues
+              // it.
+              //
+              // Single pulse alone wasn't enough, though (confirmed: still
+              // dragging a thin strand on a real print, right at the seam,
+              // after this fix alone). send_ender() only blocks until
+              // Marlin replies "ok", which fires once the command is
+              // *queued*, not once it's physically finished -- and this
+              // retract batch is immediately followed by whatever the next
+              // batch is, which for a normal seam is the slicer's own
+              // embedded Z-hop travel move (confirmed directly in the
+              // sliced gcode: Z0.2->0.6->0.2 around every retract, nothing
+              // to do with the separate long-travel pause-cycle hop fixed
+              // earlier). Without waiting for physical completion here,
+              // that hop's Z-lift can start before the E-axis has actually
+              // finished pulling back, same race as the pause-transition
+              // retract, just on the much more common path. M400 closes
+              // it the same way.
+              std::thread extrude_thread([this, e_sum, matched_f]() {
+                send_ender("G1 E" + std::to_string(e_sum) + " F" + std::to_string(matched_f));
+                send_ender("M400");
+              });
+              execute_with_trace(plan, is_print_batch);
+              extrude_thread.join();
+            } else {
             // Finely-grained pulses: a coarse 8-pulse cap left ~0.31s
             // idle gaps between ~0.16s active bursts on real batches
             // (confirmed directly in logs) -- long enough for each gap
@@ -1369,6 +1572,7 @@ private:
             });
             execute_with_trace(plan, is_print_batch);
             extrude_thread.join();
+            }
           } else {
             execute_with_trace(plan, is_print_batch);
           }
@@ -1392,6 +1596,33 @@ private:
       // the next iteration so it executes immediately.
       moveit::planning_interface::MoveGroupInterface::Plan pending_plan;
       bool have_pending_plan = false;
+
+      // Re-homing used to be tied to every long travel (gap >= 20mm), which
+      // meant a full retract+hop+rehome+hop-back+unretract cycle at every
+      // such boundary -- confirmed directly on a real print to be where the
+      // visible string-drag was happening, since the hop's only purpose is
+      // bed clearance for re-homing, not the travel itself (the real travel
+      // move happens afterward, hop or no hop). Decoupling the two: travel
+      // now always goes straight, hop-free, and re-homing becomes its own
+      // rare, randomly-timed event instead, so bed drift still gets
+      // corrected periodically without hopping (and dragging) at every
+      // seam. Never in the last few layers -- any defect there is the most
+      // visible thing on the finished print, not worth the trade.
+      std::vector<double> all_z;
+      for (auto& tb : trajectory_batches) {
+        for (auto& pt : tb.trajectory) all_z.push_back(pt.pose.pose.position.z);
+      }
+      std::sort(all_z.begin(), all_z.end());
+      all_z.erase(std::unique(all_z.begin(), all_z.end(),
+        [](double a, double b) { return std::abs(a - b) < 1e-5; }), all_z.end());
+      const int kLastFewLayers = 3;
+      double rehome_skip_above_z = all_z.empty() ? 0.0 :
+        all_z[std::max(0, static_cast<int>(all_z.size()) - 1 - kLastFewLayers)];
+      std::srand(static_cast<unsigned>(std::time(nullptr)));
+      // ~1181 batch boundaries on mini_cube -> ~0.5% per boundary lands
+      // around 6 re-homes across a full print. Tune after seeing real
+      // behavior, same as every other constant introduced this way.
+      const int kRehomeChancePerThousand = 5;
 
       RCLCPP_INFO(this->get_logger(), "=== Starting print: %zu batches ===", trajectory_batches.size());
       auto print_start_time = std::chrono::steady_clock::now();
@@ -1468,33 +1699,39 @@ private:
             std::pow(next_target.y - pause_pose.position.y, 2) +
             std::pow(next_target.z - pause_pose.position.z, 2));
 
+          // Diagnostic: is pause_pose (live getCurrentPose()) actually
+          // where this batch's own last gcode point says it should be?
+          // If these two disagree by roughly the same amount as gap
+          // itself, the live pose read is stale/wrong and gap is being
+          // computed against the wrong reference, not a real distance.
+          {
+            const auto& batch_end = batch.back().pose.pose.position;
+            double live_vs_intended = std::sqrt(
+              std::pow(batch_end.x - pause_pose.position.x, 2) +
+              std::pow(batch_end.y - pause_pose.position.y, 2) +
+              std::pow(batch_end.z - pause_pose.position.z, 2));
+            RCLCPP_INFO(this->get_logger(),
+              "Gap diagnostic: pause_pose=(%.5f,%.5f,%.5f) batch_end=(%.5f,%.5f,%.5f) "
+              "next_target=(%.5f,%.5f,%.5f) live_vs_intended=%.5f gap=%.5f",
+              pause_pose.position.x, pause_pose.position.y, pause_pose.position.z,
+              batch_end.x, batch_end.y, batch_end.z,
+              next_target.x, next_target.y, next_target.z,
+              live_vs_intended, gap);
+          }
+
           // Batches this model actually produces are often just a few points
           // (see build_batches() -- zigzag support/infill legitimately flips
           // MoveType almost every point), so most "batch boundaries" here are
-          // a ~0.5mm corner nudge, not a real travel move. Retreating,
-          // retracting, and replanning for that is pure overhead and is what
-          // made the pause-transition retract fire often enough to starve
-          // extrusion. Skip the whole pause cycle when the next batch starts
-          // essentially where this one ended.
-          //
-          // 3mm was too low -- measured directly from a real print's gap
-          // distribution (out_mini_cube.txt, 1180 batch boundaries):
-          // adjacent infill lines land at 6-8mm apart (matches the grid
-          // infill's own line spacing: 2*line_width/density = 2*0.45/0.15
-          // = 6mm), with a clean empty gap in the data between 8mm and
-          // 10mm before the next cluster (wall-loop/corner transitions,
-          // 10mm+). At 3mm, every single infill-line-to-infill-line
-          // transition triggered the full retract/hop/re-home/replan
-          // cycle -- confirmed in logs, 454 firings across only 1181
-          // batches (~38%), each several seconds of overhead and an
-          // extra 1mm retract/unretract stacked on top of the gcode's
-          // own retracts. 9mm sits in the natural gap between the
-          // infill-spacing cluster and the next one, so routine
-          // infill-to-infill travel is skipped while genuinely larger
-          // moves still get the pause/re-home treatment.
-          const double kSkipPauseDist = 0.009;  // 9mm
+          // a ~0.5mm corner nudge, not a real travel move -- gap itself is
+          // still just a diagnostic now (see Gap diagnostic log above), not
+          // what decides whether to re-home. That decision is made below:
+          // random, rare, and never in the last few layers (rehome_skip_
+          // above_z / kRehomeChancePerThousand, computed once above the
+          // main loop).
+          bool do_rehome = pause_pose.position.z < rehome_skip_above_z &&
+            (std::rand() % 1000) < kRehomeChancePerThousand;
 
-          if (gap < kSkipPauseDist) {
+          if (!do_rehome) {
             have_pending_plan = plan_batch(next_batch, 0, next_batch.size(), pending_plan, &remembered_state);
           } else {
             if (use_extruder && ender_ready) {
@@ -1502,6 +1739,21 @@ private:
               // retract batches, just here so the nozzle doesn't ooze while
               // parked planning the next batch.
               send_ender("G1 E-1 F1200");
+              // send_ender() only blocks until Marlin replies "ok", which
+              // fires once the command is accepted into the motion queue,
+              // not once it's physically finished -- a 1mm pull at
+              // 1200mm/min takes ~50ms to actually complete, but "ok"
+              // typically comes back in a few ms. The Z-hop below runs on
+              // a completely separate channel (MoveIt/arm), with nothing
+              // otherwise forcing it to wait for the Ender3's E-axis to
+              // really finish retracting first -- so the nozzle could
+              // start lifting while retraction is still physically in
+              // progress, leaving a thin strand attached that then gets
+              // dragged on the way back down (confirmed: this matches
+              // the drag-then-repeat stringing seen directly on a real
+              // print). M400 blocks until Marlin's motion queue is
+              // actually drained, closing that gap.
+              send_ender("M400");
             }
 
             geometry_msgs::msg::Pose hop_pose = pause_pose;
@@ -1518,8 +1770,8 @@ private:
 
             // Arm is parked clear of the bed right now -- the safe window to
             // re-home Y without it being anywhere near the bed's travel.
-            // Only at real pauses (not every batch, see kSkipPauseDist
-            // above), so this doesn't turn into constant homing overhead.
+            // Only on the rare do_rehome roll above, so this doesn't turn
+            // into constant homing overhead.
             home_bed(program.e_relative_mode);
 
             have_pending_plan = plan_batch(next_batch, 0, next_batch.size(), pending_plan, &remembered_state);
@@ -1542,6 +1794,11 @@ private:
               // every point) it fires often enough to starve the print of
               // forward extrusion almost entirely.
               send_ender("G1 E1 F1200");
+              // Same "ok" != physically-finished gap as the retract above --
+              // wait for it to really complete before the next batch's real
+              // print execution starts, so the first real forward pulse
+              // isn't still catching up on this priming move.
+              send_ender("M400");
             }
           }
         }
