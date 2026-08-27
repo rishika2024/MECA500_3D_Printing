@@ -1,6 +1,7 @@
 .vscode/
 
-3DBenchy.gcode.3mf
+3D*
+bridge*
 Cube.gcode.3mf
 out_boat.txt
 out.txt
@@ -9,3 +10,12 @@ reachable_points.csv
 mini_cube.gcode.3mf
 mini_cube_out.txt
 Part Studio 2 - Part 1.gcode.3mf
+Hollow cylinder.gcode.3mf
+out_hollow_cylinder.txt
+out_mini_cube.txt
+roslog*
+mini*
+out*
+tag*
+sc*
+meca500_rl/

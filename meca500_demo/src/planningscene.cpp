@@ -16,13 +16,21 @@ public:
   Meca500PlanningScene()
   : Node("meca500_planning_scene")
   {
-    this->declare_parameter("x", -0.054612);  
-    this->declare_parameter("y", -0.201887);
-    this->declare_parameter("z", 0.012594);
-    this->declare_parameter("qx", 0.0);
-    this->declare_parameter("qy", 0.0);
-    this->declare_parameter("qz", 0.0);
-    this->declare_parameter("qw", 1.0);
+    // Bed pose in world (= link_0__base), from a nozzle-touch probe: 6 points
+    // touched around the bed, forward-kinematics'd through meca500.urdf to the
+    // nozzle tip. Plane fit was 0.87mm RMS. Bed is tilted ~15.6deg about X
+    // (drops toward +Y / the robot). Centre pushed out to y=-0.205 (where probe
+    // touches 5 and 6 landed -- known-reachable, not the far edge). z is the
+    // fitted-plane value minus 12mm: RViz showed the marker ~1-1.5cm high, i.e.
+    // the real nozzle-frame-to-tip offset is ~20mm, not the 8mm the FK used.
+    // Overridable at runtime via table_service.
+    this->declare_parameter("x", -0.0197);
+    this->declare_parameter("y", -0.2050);
+    this->declare_parameter("z", 0.0395);
+    this->declare_parameter("qx", -0.1359);
+    this->declare_parameter("qy", -0.0046);
+    this->declare_parameter("qz", 0.0006);
+    this->declare_parameter("qw", 0.9907);
 
     // Give the planning scene interface time to connect to move_group
     rclcpp::sleep_for(500ms);

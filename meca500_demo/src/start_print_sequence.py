@@ -7,11 +7,14 @@ import serial
 import sys
 import time
 
-PORT = '/dev/ttyUSB0'
+PORT = '/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0'  # stable path -- raw
+                                                            # /dev/ttyUSBN numbering
+                                                            # isn't guaranteed constant
+                                                            # across reboots/replugs
 BAUD = 115200
 BED_TEMP = 65
 HOTEND_TEMP = 210
-PRIME_E = 20
+PRIME_E = 0  # mm (0cm)
 PRIME_F = 200
 
 
@@ -43,10 +46,10 @@ def main():
     ser.reset_input_buffer()
 
     send_gcode(ser, f'M140 S{BED_TEMP}')     # bed start
-    send_gcode(ser, f'M104 S{HOTEND_TEMP}')  # hotend start    
+    send_gcode(ser, f'M104 S{HOTEND_TEMP}')  # hotend start
     send_gcode(ser, f'M190 R{BED_TEMP}')     # wait for bed
     send_gcode(ser, f'M109 R{HOTEND_TEMP}')  # wait for hotend
-   
+
 
     print("Ender ready!")
     ser.close()

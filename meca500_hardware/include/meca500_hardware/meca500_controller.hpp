@@ -15,8 +15,8 @@
 // Originally based on ros2_control demo examples.
 // Modified for the Meca500 6-axis robot by rishika2024.
 
-#ifndef MECA500_HARDWARE__MECA500_SYSTEM_HPP_
-#define MECA500_HARDWARE__MECA500_SYSTEM_HPP_
+#ifndef MECA500_HARDWARE__MECA500_CONTROLLER_HPP_
+#define MECA500_HARDWARE__MECA500_CONTROLLER_HPP_
 
 #include <array>
 #include <chrono>
@@ -118,4 +118,4 @@ private:
 
 }  // namespace meca500_hardware
 
-#endif  // MECA500_HARDWARE__MECA500_SYSTEM_HPP_
+#endif  // MECA500_HARDWARE__MECA500_CONTROLLER_HPP_

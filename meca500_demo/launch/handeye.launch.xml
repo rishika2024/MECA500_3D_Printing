@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="serial_no" default=""/>
+
+  <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py">
+    <arg name="camera_name" value="camera"/>
+    <arg name="camera_namespace" value="camera"/>
+    <arg name="serial_no" value="$(var serial_no)"/>
+    <arg name="enable_color" value="true"/>
+    <arg name="enable_depth" value="false"/>
+    <arg name="pointcloud.enable" value="false"/>
+  </include>
+
+  <node pkg="apriltag_ros" exec="apriltag_node" name="apriltag" namespace="apriltag" output="screen">
+    <param name="family" value="Standard41h12"/>
+    <param from="$(find-pkg-share apriltag_ros)/cfg/tags_41h12.yaml"/>
+    <!-- camera_name="camera" plus camera_namespace="camera" above doubles
+         the topic path to /camera/camera/... (realsense2_camera's own
+         namespacing), not /camera/... -->
+    <remap from="image_rect" to="/camera/camera/color/image_raw"/>
+    <remap from="camera_info" to="/camera/camera/color/camera_info"/>
+  </node>
+
+  <!-- Needs trajectory.launch.xml's move_group already running in a
+       separate launch , this file only brings up the camera/apriltag
+       side, plus the capture node that drives both. -->
+  <node pkg="meca500_demo" exec="handeye_capture" name="handeye_capture" output="screen"/>
+</launch>

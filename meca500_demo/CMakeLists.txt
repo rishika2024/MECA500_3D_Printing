@@ -12,9 +12,23 @@ find_package(rclcpp_action REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(shape_msgs REQUIRED)
 find_package(moveit_msgs REQUIRED)
+
+# ros-kilted-moveit-ros-planning 2.14.3's exported CMake target lists
+# "tl::expected" in its INTERFACE_LINK_LIBRARIES, but ros-kilted-tl-expected
+# only defines the target as tl_expected::tl_expected -- an upstream
+# packaging mismatch between the two. Alias it before pulling in
+# moveit_ros_planning_interface so its find_package() below doesn't fail
+# trying to resolve a target that was never actually exported under that name.
+find_package(tl_expected REQUIRED)
+if(NOT TARGET tl::expected)
+  add_library(tl::expected ALIAS tl_expected::tl_expected)
+endif()
+
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
 find_package(control_msgs REQUIRED)
@@ -45,6 +59,19 @@ target_link_libraries(planningscene PUBLIC
 )
 
 install(TARGETS planningscene DESTINATION lib/${PROJECT_NAME})
+
+# ── april tag planning scene node ───
+add_executable(planningscene_april_tag src/planningscene_april_tag.cpp)
+target_link_libraries(planningscene_april_tag PUBLIC
+  rclcpp::rclcpp
+  ${geometry_msgs_TARGETS}
+  ${tf2_msgs_TARGETS}
+  tf2_ros::tf2_ros
+  ${visualization_msgs_TARGETS}
+  Eigen3::Eigen
+  ${cpp_typesupport_target}
+)
+install(TARGETS planningscene_april_tag DESTINATION lib/${PROJECT_NAME})
 
 # ── trajectory node ───
 add_executable(trajectory src/trajectory.cpp)
@@ -78,8 +105,21 @@ target_link_libraries(reachability PUBLIC
 )
 install(TARGETS reachability DESTINATION lib/${PROJECT_NAME})
 
+# ── hand-eye calibration data collector ───
+add_executable(handeye_capture src/handeye_capture.cpp)
+target_link_libraries(handeye_capture PUBLIC
+  rclcpp::rclcpp
+  ${geometry_msgs_TARGETS}
+  moveit_ros_planning_interface::moveit_move_group_interface
+  tf2_ros::tf2_ros
+)
+install(TARGETS handeye_capture DESTINATION lib/${PROJECT_NAME})
+
 install(DIRECTORY launch config DESTINATION share/${PROJECT_NAME})
-install(PROGRAMS src/start_print_sequence.py src/end_print_sequence.py DESTINATION share/${PROJECT_NAME})
+install(PROGRAMS
+  src/start_print_sequence.py
+  src/end_print_sequence.py
+  DESTINATION share/${PROJECT_NAME})
 
 # ── tests ───
 if(BUILD_TESTING)

@@ -15,6 +15,7 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>tf2_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>shape_msgs</depend>
   <depend>moveit_msgs</depend>
@@ -23,6 +24,12 @@
   <depend>control_msgs</depend>
   <depend>gcode</depend>
   <depend>python3-serial</depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>image_proc</exec_depend>
+  <exec_depend>realsense2_camera</exec_depend>
+  <exec_depend>apriltag_ros</exec_depend>
   <build_depend>libeigen3-dev</build_depend>
 
   <exec_depend>rosidl_default_runtime</exec_depend>

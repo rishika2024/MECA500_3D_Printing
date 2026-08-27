@@ -4,7 +4,10 @@ import serial
 import sys
 import time
 
-PORT = '/dev/ttyUSB0'
+PORT = '/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0'  # stable path -- raw
+                                                            # /dev/ttyUSBN numbering
+                                                            # isn't guaranteed constant
+                                                            # across reboots/replugs
 BAUD = 115200
 BED_TEMP = 25
 HOTEND_TEMP = 28

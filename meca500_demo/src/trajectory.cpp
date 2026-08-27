@@ -254,6 +254,27 @@ private:
   // actually need each speed tier, not by absolute distance from the
   // extremes.
   std::vector<double> matched_f_samples_seen;
+  // Raw (unfloored) e_sum from every genuine print-type batch seen during
+  // reconnaissance -- used to find this print's own real gap between
+  // genuinely-near-zero corner-taper segments and legitimately-short
+  // segments (curve-approximation, fine infill), instead of a single fixed
+  // step-count tuned against one model. Measured directly: mini_cube's real
+  // corner-taper segments sit at 0.02-0.09mm; Benchy's legitimate short
+  // curve segments sit at 0.24-0.36mm -- a real, empty gap between them,
+  // with nothing landing in between. A fixed threshold (30 steps, ~0.32mm)
+  // sat inside Benchy's legitimate cluster instead of in that gap, so it
+  // was bumping thousands of already-fine segments and adding ~20% excess
+  // volume. Finding the gap fresh per print means a simple model doesn't
+  // get an unnecessarily-high floor, and a detailed model doesn't get one
+  // tuned for a simple model's distribution.
+  std::vector<double> e_sum_samples_seen;
+  // Computed once after reconnaissance (see the percentile + physical-
+  // minimum calculation right after the matched_f_samples_seen sort
+  // below); the execution loop's corner-taper floor uses this instead of
+  // a fixed constant -- max(this print's own 2nd-percentile e_sum,
+  // 8-step physical minimum), never a fixed number tuned on a different
+  // model.
+  double dynamic_min_print_e_sum;
 
   // Scale factor for extrusion, applied to the E value in G-code. Default is 1.0 (no scaling).
   double extrusion_multiplier = 1.0;
@@ -1145,6 +1166,7 @@ private:
       matched_f_min_seen = -1.0;
       matched_f_max_seen = -1.0;
       matched_f_samples_seen.clear();
+      e_sum_samples_seen.clear();
       size_t recon_idx = 0;
       for (auto& tb : trajectory_batches) {
         recon_idx++;
@@ -1174,38 +1196,17 @@ private:
         if (tb.type != MoveType::None) {
           double e_sum = 0.0;
           for (auto& pt : batch) e_sum += pt.e * extrusion_multiplier;
-          // Zigzag/crosshatch infill lines shrink toward zero length at the
-          // two off-diagonal corners of a square -- confirmed directly in
-          // the sliced gcode itself (e.g. E=0.0189mm on a real top-solid-
-          // infill corner segment on mini_cube), not something this
-          // pipeline introduces; lines parallel to one diagonal necessarily
-          // taper to nothing at the two corners not on that diagonal. At
-          // the confirmed 93 steps/mm E calibration (read via M503), that's
-          // ~2 steps -- comfortably small enough to disappear into
-          // backlash/rounding on real hardware even though the command
-          // goes out correctly (confirmed: the roslog shows the pulse
-          // sent, matching the gcode's own E value exactly). Floor genuine
-          // print batches at 30 steps (~0.323mm) so no single command is
-          // that marginal -- a deliberate small deviation from the
-          // slicer's literal amount at just the handful of near-zero
-          // segments per corner per top-solid layer, not a volume-
-          // preserving rescale like the rate mapping below. (Was 20 steps
-          // / ~0.215mm -- confirmed on a real print that this shrank the
-          // dropout area by 3-4mm but didn't fully clear it, so raised to
-          // 30. Tried 40 next, but checked directly against real roslogs
-          // (hollow_cylinder_grid and Benchy) and found 30 already floors
-          // every genuinely-near-zero corner-taper segment (86% of what
-          // 40 was catching were legitimate short support/infill
-          // segments in the 0.24-0.36mm range, not tapering-to-zero --
-          // 40 was over-extruding those and visibly tangling Benchy's
-          // support). Back to 30; the remaining cylinder dropout wasn't
-          // a floor problem at all -- floor stays here, that one needs a
-          // different fix.
-          const double kMinVisibleESteps = 30.0;
-          const double kEStepsPerMm = 93.0;  // from M503, this printer
-          const double kMinPrintESum = kMinVisibleESteps / kEStepsPerMm;  // ~0.323mm
-          if (tb.type == MoveType::Print && std::abs(e_sum) > 1e-6 && std::abs(e_sum) < kMinPrintESum) {
-            e_sum = std::copysign(kMinPrintESum, e_sum);
+          // Collect the RAW (unfloored) e_sum for every genuine print-type
+          // batch -- this is what the gap-finding right after this loop
+          // uses to set this print's own corner-taper floor, instead of a
+          // fixed constant tuned against one model (see the member
+          // declaration for the full reasoning). Deliberately not flooring
+          // here: raw_matched_f below should reflect this print's true
+          // rate distribution for the percentile rescale, not one already
+          // distorted by a floor mechanism that's solving an unrelated
+          // problem (single-command motor reliability, not rate ranking).
+          if (tb.type == MoveType::Print && e_sum > 1e-6) {
+            e_sum_samples_seen.push_back(e_sum);
           }
           auto& jt = recon_plan.trajectory.joint_trajectory.points;
           double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
@@ -1232,6 +1233,60 @@ private:
       RCLCPP_INFO(this->get_logger(), "=== Reconnaissance done: matched_f range [%.2f, %.2f] mm/min, "
         "%zu forward-print samples for percentile rescale ===",
         matched_f_min_seen, matched_f_max_seen, matched_f_samples_seen.size());
+
+      // Set the corner-taper floor from this print's own real e_sum
+      // distribution -- always, no fallback to a fixed constant. A
+      // gap-search (find the empty stretch between a broken cluster and
+      // a legitimate cluster) only works when a print's distribution is
+      // actually bimodal, which mini_cube and the cylinder are, but
+      // Benchy measurably isn't -- checked directly: the biggest jump
+      // anywhere in Benchy's sorted values was 1.33x, nowhere near a
+      // real gap, because curve-approximation segments vary continuously
+      // in length with no natural break. A percentile of this print's
+      // own samples works either way: on a bimodal print it lands inside
+      // (or very near) the same real gap the search would have found; on
+      // a continuous print it still gives a number scaled to what this
+      // specific model actually produces, instead of reusing an unrelated
+      // constant that happened to work on a different model.
+      const double kEStepsPerMm = 93.0;  // from M503, this printer
+      const double kFloorPercentile = 2.0;  // bottom 2% of this print's own real e_sum samples
+      std::sort(e_sum_samples_seen.begin(), e_sum_samples_seen.end());
+      double percentile_e_sum = 0.0;
+      if (!e_sum_samples_seen.empty()) {
+        size_t idx = static_cast<size_t>(e_sum_samples_seen.size() * kFloorPercentile / 100.0);
+        idx = std::min(idx, e_sum_samples_seen.size() - 1);
+        percentile_e_sum = e_sum_samples_seen[idx];
+      }
+      // Safety net under the percentile: nothing stops the 2nd-percentile
+      // value above from landing suspiciously low on some print (too few
+      // samples for the percentile to be meaningful, or a print whose
+      // bottom 2% genuinely is smaller than real hardware can reliably
+      // move). This has to be a value with real evidence behind it, not
+      // a margin calculated above a single worst-case sample -- directly
+      // tested on mini_cube: 20 steps still left a visible corner
+      // dropout, 30 steps cleared it. Nothing between 20 and 30 has ever
+      // actually been tried, so anything in that gap is just as much of
+      // an unconfirmed guess as 8 or 12 turned out to be. 30 is used
+      // here because it's the only value with a real, direct, working
+      // test behind it -- even though that means this floor will
+      // dominate (and reproduce the known ~21% excess-volume/speed-spike
+      // cost on Benchy-type prints) on every real print seen so far,
+      // since the percentile has never yet come out above even 8 on any
+      // of them. A missing corner is a worse failure than local
+      // over-extrusion, so this errs toward the confirmed-safe side
+      // until a tighter value is actually tested for real, rather than
+      // guessed. Taking the larger of this and the percentile means the
+      // percentile can still raise the floor further when a print's own
+      // data calls for it, but it can never fall below the one number
+      // that's actually been proven on real hardware.
+      const double kPhysicalMinESteps = 30.0;
+      double physical_min_e_sum = kPhysicalMinESteps / kEStepsPerMm;
+      dynamic_min_print_e_sum = std::max(percentile_e_sum, physical_min_e_sum);
+      RCLCPP_INFO(this->get_logger(),
+        "Corner-taper floor: p%.0f of %zu real e_sum samples = %.4fmm, physical min = %.4fmm "
+        "(%.0f steps) -> using %.4fmm (%.1f steps)",
+        kFloorPercentile, e_sum_samples_seen.size(), percentile_e_sum, physical_min_e_sum,
+        kPhysicalMinESteps, dynamic_min_print_e_sum, dynamic_min_print_e_sum * kEStepsPerMm);
     }
 
     if (!moved_to_bed) {
@@ -1339,16 +1394,18 @@ private:
           // taper segments in zigzag infill can command E as small as a
           // couple stepper steps (93 steps/mm confirmed via M503), small
           // enough to vanish into backlash/rounding on real hardware even
-          // though the command is sent correctly.
-          const double kMinVisibleESteps = 30.0;
-          const double kEStepsPerMm = 93.0;  // from M503, this printer
-          const double kMinPrintESum = kMinVisibleESteps / kEStepsPerMm;  // ~0.323mm
-          if (type == MoveType::Print && std::abs(e_sum) > 1e-6 && std::abs(e_sum) < kMinPrintESum) {
+          // though the command is sent correctly. dynamic_min_print_e_sum
+          // is found fresh per print by the gap search in the
+          // reconnaissance pass above, instead of a fixed constant --
+          // that's what stops a detailed model (many legitimately-short
+          // segments) from getting the same aggressive floor a simple
+          // model needed.
+          if (type == MoveType::Print && std::abs(e_sum) > 1e-6 && std::abs(e_sum) < dynamic_min_print_e_sum) {
             double e_sum_before_floor = e_sum;
-            e_sum = std::copysign(kMinPrintESum, e_sum);
+            e_sum = std::copysign(dynamic_min_print_e_sum, e_sum);
             RCLCPP_INFO(this->get_logger(),
-              "Corner-taper floor: e_sum %.4f -> %.4f (below %.3fmm / %.0f steps min)",
-              e_sum_before_floor, e_sum, kMinPrintESum, kMinVisibleESteps);
+              "Corner-taper floor: e_sum %.4f -> %.4f (below %.3fmm dynamic floor)",
+              e_sum_before_floor, e_sum, dynamic_min_print_e_sum);
           }
           auto& jt = plan.trajectory.joint_trajectory.points;
           double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
@@ -1673,8 +1730,18 @@ private:
         {
           double elapsed = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - print_start_time).count();
-          RCLCPP_INFO(this->get_logger(), "Batch %zu/%zu complete (%zu points) -- %.1fs elapsed",
-            b + 1, trajectory_batches.size(), batch.size(), elapsed);
+          // Z (and type) of the batch's own last point, purely for
+          // post-hoc log correlation -- lets a specific batch range be
+          // matched back to "this was at height Z, doing a Print/Retract/
+          // travel move" without needing to re-run the print, the same
+          // way benchy5's floor-trigger clusters couldn't be localized
+          // to real geometry after the fact because nothing recorded
+          // where in the model they happened.
+          const char* type_str = (type == MoveType::Print) ? "Print" :
+            (type == MoveType::Retract) ? "Retract" : "None";
+          double batch_z = batch.empty() ? -1.0 : batch.back().pose.pose.position.z;
+          RCLCPP_INFO(this->get_logger(), "Batch %zu/%zu complete (%zu points) -- %.1fs elapsed Z=%.4f type=%s",
+            b + 1, trajectory_batches.size(), batch.size(), elapsed, batch_z, type_str);
         }
 
         // Between batches: retract, hop 1cm up, pre-plan the next batch

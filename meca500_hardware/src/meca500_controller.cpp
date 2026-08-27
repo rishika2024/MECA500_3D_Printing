@@ -250,26 +250,26 @@ namespace meca500_hardware
             // controller's first write() cycle doesn't command an extreme position.
             cmd = "GetJoints";
             send(control_fd, cmd.c_str(), cmd.size() + 1, 0);
-            char jbuf[512] = {0};
-            //jresp accumulates partial socket reads.
-            std::string jresp;
+            char joint_buffer[512] = {0};
+            //joint_resp accumulates partial socket reads.
+            std::string joint_resp;
             // attempt 5 reads
             for (int attempt = 0; attempt < 5; ++attempt) {
                 // memset basically sets all bytes of the data to a given value
                 // in this case: 0, to clear the buffer before each recv call
-                memset(jbuf, 0, sizeof(jbuf));
-                int n = recv(control_fd, jbuf, sizeof(jbuf) - 1, 0);
+                memset(joint_buffer, 0, sizeof(joint_buffer));
+                int n = recv(control_fd, joint_buffer, sizeof(joint_buffer) - 1, 0);
                 if (n > 0) {
-                    jresp += std::string(jbuf, n);
-                    if (jresp.find("[2026]") != std::string::npos) break;
+                    joint_resp += std::string(joint_buffer, n);
+                    if (joint_resp.find("[2026]") != std::string::npos) break;
                 }
             }
-            size_t jpos = jresp.rfind("[2026]");
-            if (jpos != std::string::npos) {
-                size_t ds = jresp.find('[', jpos + 6);
-                size_t de = jresp.find(']', ds);
+            size_t joint_pos = joint_resp.rfind("[2026]");
+            if (joint_pos != std::string::npos) {
+                size_t ds = joint_resp.find('[', joint_pos + 6);
+                size_t de = joint_resp.find(']', ds);
                 if (ds != std::string::npos && de != std::string::npos) {
-                    std::string data = jresp.substr(ds + 1, de - ds - 1);
+                    std::string data = joint_resp.substr(ds + 1, de - ds - 1);
                     try {
                         std::vector<std::string> fields;
                         std::stringstream ss(data);

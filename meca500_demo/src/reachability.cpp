@@ -169,7 +169,7 @@ private:
 
     if (use_extruder_) {
       end_effector_link_ = "nozzle";
-      threshold = 0.009;
+      threshold = 0.011;
     } 
     
     else {

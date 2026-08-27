@@ -52,4 +52,13 @@ def generate_launch_description():
         .to_moveit_configs()
     )
 
+    # move_group_capabilities isn't a builder method in this MoveIt version --
+    # it's a mutable field on the MoveItConfigs object itself, read by
+    # generate_move_group_launch() as the default for the "capabilities"
+    # launch arg.
+    moveit_config.move_group_capabilities["capabilities"] = (
+        "pilz_industrial_motion_planner/MoveGroupSequenceAction "
+        "pilz_industrial_motion_planner/MoveGroupSequenceService"
+    )
+
     return LaunchDescription(declared_args + generate_move_group_launch(moveit_config).entities)
