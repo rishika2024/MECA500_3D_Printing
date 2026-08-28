@@ -19,3 +19,5 @@ out*
 tag*
 sc*
 msr_meca500_rl/
+gcode_3mf/
+.claude/
