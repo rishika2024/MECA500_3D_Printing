@@ -278,12 +278,12 @@ private:
   double f_max;
   double f_min;
   // Real (not estimated) range of matched_f -- discovered by a plan-only
-  // reconnaissance pass over the whole print before execution starts, used
+  // pre-planning pass over the whole print before execution starts, used
   // to rescale each batch's extrusion feed rate into the extruder's real
   // safe range instead of flattening most of the print to one flat number.
   double matched_f_min_seen;
   double matched_f_max_seen;
-  // Every raw matched_f seen during reconnaissance (sorted after the pass
+  // Every raw matched_f seen during pre-planning (sorted after the pass
   // completes) -- min/max alone collapse the print's real rate distribution
   // to a straight line, which is what was crushing fine-detail variation.
   // Measured on mini_cube: 33% of points sit under 15mm/min (fine-detail/
@@ -295,7 +295,7 @@ private:
   // extremes.
   std::vector<double> matched_f_samples_seen;
   // Corner-taper floor: the smallest E move a print segment may command, set
-  // once after reconnaissance to physical_min_e_steps / e_steps_per_mm (both
+  // once after pre-planning to physical_min_e_steps / e_steps_per_mm (both
   // from machine_settings.yaml / print_tuning.yaml). Anything nonzero-but-below this gets bumped up.
   double dynamic_min_print_e_sum;
 
@@ -979,7 +979,7 @@ private:
     // constraint has to travel with the item, not with move_group).
     // Planning only -- doesn't execute anything, so it's safe to call
     // while the arm is parked mid-transition, pre-planning the next
-    // batch, or before the arm has even left home during reconnaissance.
+    // batch, or before the arm has even left home during pre-planning.
     auto plan_batch = [this](Trajectory& batch, size_t start, size_t end,
                               moveit::planning_interface::MoveGroupInterface::Plan& out_plan,
                               const moveit::core::RobotState* start_override = nullptr) -> bool {
@@ -988,7 +988,7 @@ private:
       moveit_msgs::msg::MotionSequenceRequest seq_req;
       // Cartesian reference for seg_dist below. Normally the live robot
       // pose -- but when start_override is given (chaining plan-only
-      // calls during the reconnaissance pass, where nothing is actually
+      // calls during the pre-planning pass, where nothing is actually
       // executing), the live pose never changes between batches, so use
       // FK on the override instead of querying a robot that isn't moving.
       Eigen::Vector3d prev_ee_pose;
@@ -1094,7 +1094,7 @@ private:
       return true;
     };
 
-    // Reconnaissance pass: plan-only (goal_msg.planning_options.plan_only
+    // Pre-planning pass: plan-only (goal_msg.planning_options.plan_only
     // is already true in plan_batch(), so nothing here ever executes)
     // through every batch once, from wherever the arm currently is (home)
     // -- run before the approach-to-bed sequence below, since this never
@@ -1110,7 +1110,7 @@ private:
     // when it actually runs.
     // Plan (never execute) the standoff hover + move-to-first-point
     // sequence below, purely to get a realistic starting joint state for
-    // the reconnaissance pass. Starting reconnaissance from the real
+    // the pre-planning pass. Starting pre-planning from the real
     // current state (home) meant its first batch planned a huge,
     // unrepresentative jump straight from home to the first gcode point
     // -- different enough from what real execution actually does (which
@@ -1120,7 +1120,7 @@ private:
     // approach sequence exactly, just without execute_with_trace(), so
     // the arm never actually moves here -- the real approach sequence
     // (further below, inside if (!moved_to_bed)) still runs for real
-    // after reconnaissance finishes.
+    // after pre-planning finishes.
     moveit::core::RobotState expected_state = *move_group->getCurrentState();
     expected_state.updateLinkTransforms();
     {
@@ -1187,22 +1187,22 @@ private:
     }
 
     {
-      RCLCPP_INFO(this->get_logger(), "=== Reconnaissance pass: %zu batches ===", trajectory_batches.size());
+      RCLCPP_INFO(this->get_logger(), "=== Pre-planning pass: %zu batches ===", trajectory_batches.size());
       auto virtual_state = expected_state;
       matched_f_min_seen = -1.0;
       matched_f_max_seen = -1.0;
       matched_f_samples_seen.clear();
-      size_t recon_idx = 0;
+      size_t preplan_idx = 0;
       for (auto& tb : trajectory_batches) {
-        recon_idx++;
-        RCLCPP_INFO(this->get_logger(), "Reconnaissance: planning batch %zu/%zu",
-          recon_idx, trajectory_batches.size());
+        preplan_idx++;
+        RCLCPP_INFO(this->get_logger(), "Pre-planning batch %zu/%zu",
+          preplan_idx, trajectory_batches.size());
         auto& batch = tb.trajectory;
         if (batch.empty()) continue;
-        moveit::planning_interface::MoveGroupInterface::Plan recon_plan;
-        if (!plan_batch(batch, 0, batch.size(), recon_plan, &virtual_state)) {
-          RCLCPP_WARN(this->get_logger(), "Reconnaissance: batch %zu/%zu failed to plan, skipping for statistics",
-            recon_idx, trajectory_batches.size());
+        moveit::planning_interface::MoveGroupInterface::Plan preplan;
+        if (!plan_batch(batch, 0, batch.size(), preplan, &virtual_state)) {
+          RCLCPP_WARN(this->get_logger(), "Pre-planning: batch %zu/%zu failed to plan, skipping for statistics",
+            preplan_idx, trajectory_batches.size());
           // Still advance virtual_state to roughly where this batch's own
           // points intended to end, via IK on the last target seeded from
           // the current state -- otherwise the next batch gets planned
@@ -1225,20 +1225,20 @@ private:
           // reflect this print's true rate distribution for the percentile
           // rescale, not one already distorted by the corner-taper floor
           // (which solves single-command motor reliability, not rate ranking).
-          auto& jt = recon_plan.trajectory.joint_trajectory.points;
+          auto& jt = preplan.trajectory.joint_trajectory.points;
           double dur = jt.empty() ? 1.0 : jt.back().time_from_start.sec + jt.back().time_from_start.nanosec * 1e-9;
           if (dur < 0.05) dur = 0.05;
           double raw_matched_f = (std::abs(e_sum) / dur) * 60.0;
           if (matched_f_min_seen < 0.0 || raw_matched_f < matched_f_min_seen) matched_f_min_seen = raw_matched_f;
           if (raw_matched_f > matched_f_max_seen) matched_f_max_seen = raw_matched_f;
           // Retract batches get their own fixed fast rate below (see the
-          // rescale block), never the reconnaissance-derived percentile
+          // rescale block), never the pre-planning-derived percentile
           // rescale -- keep them out of the sample population so they
           // can't skew the forward-print rank distribution.
           if (tb.type != MoveType::Retract) matched_f_samples_seen.push_back(raw_matched_f);
         }
 
-        auto& jt = recon_plan.trajectory.joint_trajectory;
+        auto& jt = preplan.trajectory.joint_trajectory;
         if (!jt.points.empty()) {
           for (size_t k = 0; k < jt.joint_names.size(); k++) {
             virtual_state.setJointPositions(jt.joint_names[k], &jt.points.back().positions[k]);
@@ -1247,7 +1247,7 @@ private:
         }
       }
       std::sort(matched_f_samples_seen.begin(), matched_f_samples_seen.end());
-      RCLCPP_INFO(this->get_logger(), "=== Reconnaissance done: matched_f range [%.2f, %.2f] mm/min, "
+      RCLCPP_INFO(this->get_logger(), "=== Pre-planning done: matched_f range [%.2f, %.2f] mm/min, "
         "%zu forward-print samples for percentile rescale ===",
         matched_f_min_seen, matched_f_max_seen, matched_f_samples_seen.size());
 
@@ -1367,13 +1367,13 @@ private:
         if (use_extruder && ender_ready && type != MoveType::None) {
           double e_sum = 0.0;
           for (size_t i = start; i < end; i++) e_sum += batch.at(i).e * extrusion_multiplier;
-          // See matching note in the reconnaissance pass above -- corner-
+          // See matching note in the pre-planning pass above -- corner-
           // taper segments in zigzag infill can command E as small as a
           // couple stepper steps (93 steps/mm confirmed via M503), small
           // enough to vanish into backlash/rounding on real hardware even
           // though the command is sent correctly. dynamic_min_print_e_sum
           // is found fresh per print by the gap search in the
-          // reconnaissance pass above, instead of a fixed constant --
+          // pre-planning pass above, instead of a fixed constant --
           // that's what stops a detailed model (many legitimately-short
           // segments) from getting the same aggressive floor a simple
           // model needed.
@@ -1397,7 +1397,7 @@ private:
           // changed) moved matched_f. So most raw values cluster low
           // regardless of print settings, and a flat floor would flatten
           // nearly the whole print to one flat rate. Rescale using the
-          // real range the reconnaissance pass discovered for this print
+          // real range the pre-planning pass discovered for this print
           // (see just above the main loop) into this hotend's real safe
           // volumetric range for stock Ender3 + 0.4mm nozzle + PLA
           // (~10-12 mm^3/s before the extruder gear slips), converted to
@@ -1462,7 +1462,7 @@ private:
             //     to 111/175), leaving comparatively little target range
             //     for the 57% of batches that are bulk+fast. Percentile-
             //     rank -- place each batch by its rank in the sorted
-            //     reconnaissance sample, not its raw value -- was the
+            //     pre-planning sample, not its raw value -- was the
             //     only one of the four that's shape-free (adapts to
             //     whatever clustering a given print's own geometry
             //     produces instead of assuming a curve shape up front)
@@ -1732,7 +1732,7 @@ private:
           auto remembered_state = *move_group->getCurrentState();
           // plan_batch() does FK on this via getGlobalLinkTransform() when
           // passed as start_override, which asserts on dirty transforms --
-          // same fix as virtual_state in the reconnaissance pass above.
+          // same fix as virtual_state in the pre-planning pass above.
           remembered_state.updateLinkTransforms();
           auto pause_pose = move_group->getCurrentPose(end_effector_link).pose;
 

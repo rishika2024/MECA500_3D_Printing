@@ -1,23 +1,30 @@
 # MECA500 3D Printing
-A ROS2 package for controlling a Meca500 6DOF robot arm (5 μm resolution) to perform robotic 3D printing via MoveIt2.
+A ROS2 workspace for driving a Meca500 6-DOF robot arm (5 μm resolution) as a 3D printer, through MoveIt2.
 
 ## Overview
-This project bridges the Meca500 proprietary API to MoveIt2 through a custom ROS2 hardware interface, enabling real trajectory planning and execution on physical hardware. A print pipeline sweeps the robot's reachable workspace, centers and clips sliced G-code onto the densest reachable region, and executes it move-by-move through MoveIt2's Pilz Industrial Motion Planner (LIN for straight/extruding moves, CIRC for arcs).
+This project bridges the Meca500 proprietary API to MoveIt2 through a custom ROS2 hardware interface, enabling real trajectory planning and execution on physical hardware. A print pipeline locates the bed (from a nozzle touch probe), sweeps the robot's reachable workspace, centers and clips sliced G-code onto the densest reachable region, groups the moves into batches by type, and runs each batch as one blended MoveIt2 Pilz motion sequence (LIN for straight/extruding moves, CIRC for arcs) — after a pre-planning pass over the whole print. Everything hardware- or print-specific lives in three YAML files (see [Configuration](#configuration)).
 
 ## Packages
 
-* msr_meca500_hardware — ROS2 hardware interface bridging the Meca500 API to MoveIt2
-* msr_meca500_moveit — MoveIt2 configuration and launch files
-* msr_meca500_robot — Robot description (URDF/Xacro), including the mounted extruder end-effector and `nozzle` tool frame
-* msr_meca500_print_pipeline — Reachability sweeping, planning scene setup, and the main print-execution node: parses G-code moves, plans them through Pilz LIN/CIRC, and recovers from occasional IK failures (Z-hop for travels, midpoint bisection for extruding moves) without skipping a commanded point
-* msr_gcode — G-code handling: a Python preprocessing tool (centers a sliced print on the densest reachable region, drops moves outside the workspace as gaps, validates and repairs arc geometry) plus a C++ parser library used by the gcode print executor at execution time. The number of layers to print is configurable (`-l`/`layers`, see below) — the default is all layers, or pass a smaller count to print an evenly-spaced subset for a quicker test
+All first-party packages are prefixed `msr_` to keep them apart from vendor packages.
+
+* **msr_meca500_hardware** — ros2_control hardware interface (`Meca500System`) bridging the Meca500 TCP API to MoveIt2
+* **msr_meca500_robot** — robot description (URDF/Xacro): the arm, the mounted Ender3 extruder with its `nozzle` tool frame, and the Ender3 chassis/bed as environment collision geometry
+* **msr_meca500_moveit** — MoveIt2 configuration and launch files
+* **msr_gcode** — G-code handling: a Python preprocessing tool (centers a sliced print on the densest reachable region, drops moves outside the workspace as gaps, validates and repairs arc geometry) plus a C++ parser library used at execution time. Layer count is configurable (`-l`/`layers`) — default all layers, or a smaller count for an evenly-spaced subset
+* **msr_meca500_print_pipeline** — the print application. Nodes:
+  * `gcode_print_executor` — the executor: groups G-code into batches by move type, plans and runs each batch as one blended Pilz LIN/CIRC sequence, drives the Ender3 over serial (temps, extrusion, bed re-home), and recovers from IK failures (Z-hop for travels, midpoint bisection for extruding moves) without skipping a commanded point
+  * `reachability` — sweeps an N×N grid over the bed, writes the reachable points to CSV
+  * `planningscene` — hosts `/table_service`, publishes the bed pose as `/table_marker`
+  * `bed_from_touches` — fits the bed plane from nozzle touch-probe joint poses (or applies a flat default) and pushes it to `/table_service`
+* **msr_meca500_rl** — experimental: RL for adaptive tool orientation / extrusion
 
 ## External Dependency: Patched Pilz Industrial Motion Planner
 
 This project builds `pilz_industrial_motion_planner` from source (from [moveit/moveit2](https://github.com/moveit/moveit2)) instead of using the stock `apt` package, with one constant changed so its CIRC arc-fitting gate matches the Meca500's 5 μm resolution instead of the stock library's much coarser industrial-scale tolerance:
 
 * `MAX_COLINEAR_NORM` (the near-degenerate-triangle rejection in `circleFromInterim`, `path_circle_generator.hpp`) lowered from the stock `1e-5` to `2.5e-11` (5 μm × 5 μm), so genuinely tiny print-scale arcs stop getting rejected as "no plane" errors
-* the gcode print executor's own flatness check (`get_arc_center`/CIRC path in `msr_meca500_print_pipeline`) mirrors that same `2.5e-11` threshold, so an arc is only demoted to a straight line when it's below what the robot can actually resolve
+* `gcode_print_executor`'s own flatness check (`get_arc_center`/CIRC path) mirrors that same `2.5e-11` threshold, so an arc is only demoted to a straight line when it's below what the robot can actually resolve
 
 The change is in [`patches/pilz_industrial_motion_planner.patch`](patches/pilz_industrial_motion_planner.patch). To set it up:
 ```bash
@@ -30,6 +37,45 @@ git apply /path/to/Final_Project/patches/pilz_industrial_motion_planner.patch
 
 ## Setup
 <img width="2040" alt="Full Setup" src="https://github.com/user-attachments/assets/774f2ea0-13c4-4861-8aae-b70a6dd08630" />
+
+### Build
+
+Needs ROS 2 Kilted with MoveIt 2, plus the patched Pilz planner (above) built into the same workspace.
+
+```bash
+# from your workspace's src/
+git clone <this repo> Final_Project
+rosdep install --from-paths Final_Project --ignore-src -r -y   # rclcpp, moveit, python3-serial, python3-yaml, ...
+cd ..
+colcon build --symlink-install
+source install/setup.bash
+```
+
+Build order (`msr_gcode` + `msr_meca500_robot` → `msr_meca500_hardware` → `msr_meca500_moveit` → `msr_meca500_print_pipeline`) is resolved by colcon.
+
+### First-time setup
+
+1. Fill in `msr_meca500_print_pipeline/config/machine_settings.yaml` for your printer — serial port, `M503` E-steps, `M114` home position, hotend/bed temps, the nozzle tip offset.
+2. Locate the bed (see [Configuration](#configuration)) and write the touch poses into `bed_settings.yaml`, or leave `default_bed: true` for a flat bed at a known spot.
+
+## Configuration
+
+`msr_meca500_print_pipeline/config/` holds three ROS 2 params files, loaded by the
+launch files (`<param from>`) and read directly by the Ender3 sequence scripts.
+Split by *who sets each value and when*:
+
+| file | contents | you touch it... |
+|---|---|---|
+| `machine_settings.yaml` | serial port, baud, E-steps/mm, home XY + feedrate, temps, extruder link names + tip offsets | once, at bring-up |
+| `bed_settings.yaml` | `default_bed`, `default_bed_pose`, and the nozzle **touch poses** the plane is fit from | whenever the bed moves — output of the touch procedure below |
+| `print_tuning.yaml` | run-mode defaults, reachability grid, extrusion floor + feed rates, re-home constants | rarely; only if a comment tells you to |
+
+**Locating the bed** (`default_bed:=false`): jog the nozzle to touch the bed at
+≥3 spots, and once at the centre. For each, record the `position` list from
+`ros2 topic echo /joint_states` into `bed_settings.yaml` (`bed_touch_poses`
+flattened 6-at-a-time, `bed_center_pose` for the centre). `bed_from_touches`
+runs FK on each to get the nozzle tip, fits the plane by SVD, and sets it on
+`/table_service`. With `default_bed:=true` it just uses `default_bed_pose`.
 
 ## Demos
 
@@ -51,13 +97,23 @@ In the RViz views below, the **green** line is the `ee_trace` (every sampled end
 
 ## Launch & Service Commands
 
-**Bring up MoveIt2 + RViz + the print executor + planning-scene nodes:**
+**System bring-up** — MoveIt2 + ros2_control + RViz + `planningscene` + `bed_from_touches` + `gcode_print_executor`. Run once, leave up:
 ```bash
 ros2 launch msr_meca500_print_pipeline main.launch.xml use_mock_hardware:=true   # sim
 ros2 launch msr_meca500_print_pipeline main.launch.xml use_mock_hardware:=false  # real Meca500
+# default_bed:=false to fit the bed from bed_settings.yaml instead of the flat default
 ```
 
-**Set the print bed's pose** (position + orientation quaternion — use a non-identity `qx/qy/qz/qw` for the random-orientation/cube test):
+**Run a print** — set bed → reachability sweep → parse/center/clip → execute. Needs `main.launch.xml` already running (it hosts the services):
+```bash
+ros2 launch msr_meca500_print_pipeline print.launch.xml \
+  model_file:=/path/to/model.gcode.3mf \
+  out_file:=/path/to/out.txt \
+  layers:=21          # 0 = all layers
+  # default_bed:=false to re-fit the bed for this print
+```
+
+**Set the bed pose manually** (e.g. a deliberately tilted bed for the cube demo):
 ```bash
 ros2 service call /table_service msr_meca500_print_pipeline/srv/Table \
   "{x: 0.0, y: -0.20, z: -0.15, qx: 0.0, qy: 0.0, qz: 0.0, qw: 1.0}"
@@ -69,32 +125,23 @@ ros2 service call /goal_service msr_meca500_print_pipeline/srv/Goal "{gcode: 'G1
 ros2 service call /goal_service msr_meca500_print_pipeline/srv/Goal "{gcode: 'G2 X50 Y0 Z10 I25 J0 F1500'}"
 ```
 
-**Run the full print pipeline** (reachability sweep → parse/center/clip → print) in one shot:
+**Run each stage individually** (`<config>` = `$(ros2 pkg prefix msr_meca500_print_pipeline)/share/msr_meca500_print_pipeline/config`):
 ```bash
-ros2 launch msr_meca500_print_pipeline print.launch.xml \
-  model_file:=/path/to/model.gcode.3mf \
-  out_file:=/path/to/out.txt \
-  reach_csv:=/path/to/reachable_points.csv \
-  layers:=21   # 0 = all layers
-```
+# 1. Set the bed pose
+ros2 run msr_meca500_print_pipeline bed_from_touches --ros-args \
+  --params-file <config>/machine_settings.yaml --params-file <config>/bed_settings.yaml
 
-**Or run each stage of the pipeline individually:**
-```bash
-# 1. Sweep the reachable workspace
-ros2 run msr_meca500_print_pipeline reachability --ros-args -p out_file:=reachable_points.csv
+# 2. Sweep the reachable workspace
+ros2 run msr_meca500_print_pipeline reachability --ros-args \
+  --params-file <config>/machine_settings.yaml --params-file <config>/print_tuning.yaml \
+  -p out_file:=reachable_points.csv
 
-# 2. Parse/center/clip the sliced model onto that workspace
-python3 msr_gcode/src/gcode_parser.py model.gcode.3mf out.txt \
-  --reach-csv reachable_points.csv -l 21
+# 3. Parse/center/clip the sliced model onto that workspace
+python3 msr_gcode/src/gcode_parser.py model.gcode.3mf out.txt --reach-csv reachable_points.csv -l 21
 
-# 3. Send the parsed file to the printer
+# 4. Send the parsed file to the executor
 ros2 service call /gcode_file_service msr_meca500_print_pipeline/srv/GcodeFile "{file_path: '/path/to/out.txt'}"
 ```
-
-## In Progress
-* Generalizing the pipeline so any extruder can be mounted from just its URDF, with no hardcoded tool frame/offset
-* Moving from mock hardware to printing on the real robot
-* Reinforcement learning for adaptive tool orientation and extrusion
 
 ## Tech Stack
 ROS2 | MoveIt2 | Pilz Industrial Motion Planner | C++ | Python | Meca500 API
