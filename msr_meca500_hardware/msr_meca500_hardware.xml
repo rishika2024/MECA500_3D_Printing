@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<library path="msr_meca500_hardware">
+  <class
+    name="msr_meca500_hardware/Meca500System"
+    type="msr_meca500_hardware::Meca500System"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Joint hardware interface for ros2 control for meca500 robot
+    </description>
+  </class>
+</library>

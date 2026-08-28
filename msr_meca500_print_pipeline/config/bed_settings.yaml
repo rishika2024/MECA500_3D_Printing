@@ -1,0 +1,31 @@
+# bed_settings.yaml -- where the print bed is, in link_0__base.
+#
+# This is procedure output, not hand-tuning: with default_bed = false, jog the
+# nozzle to touch the bed at several spots, record each /joint_states 'position'
+# vector below, and bed_from_touches fits the plane. See the README's
+# "Locating the bed" step. A ROS 2 params file; loaded by bed_from_touches.
+
+/**:
+  ros__parameters:
+
+    # true  -> use default_bed_pose as-is (a flat bed at a known spot)
+    # false -> fit the plane from bed_touch_poses (+ bed_center_pose)
+    default_bed: true
+
+    # flat-bed fallback pose in link_0__base:  x y z  qx qy qz qw
+    default_bed_pose: [-0.054612, -0.201887, 0.0121794, 0.0, 0.0, 0.0, 1.0]
+
+    # /joint_states 'position' vectors (rad, j1..j6) with the nozzle tip
+    # touching the bed, flattened 6-at-a-time. Need >= 3 poses.
+    bed_touch_poses: [
+       0.09631509,  0.26005406,  0.00148503, -0.00122773, -1.02110788, -0.00040624,
+       0.13296665, -0.06762540,  0.44985469, -0.01462172, -0.90068917,  0.04317601,
+       0.64021236,  0.13775678,  0.25611560, -0.18329338, -0.93832058,  0.63380817,
+      -0.17795808, -0.05885580,  0.46222649,  0.09570314, -0.89481214, -0.32477907,
+      -0.14728293,  0.11585335,  0.21982466,  0.08095013, -0.95966276, -0.28116947,
+       0.68040036,  0.41413996, -0.15219533, -0.17723009, -1.07751158,  0.64983401,
+    ]
+
+    # optional single [j1..j6] with the nozzle at the bed centre -> used as the
+    # reported bed xyz. Empty list -> use the centroid of bed_touch_poses.
+    bed_center_pose: [0.24622681, -0.05098030, 0.45168805, -0.12803819, -0.91310193, 0.43194620]

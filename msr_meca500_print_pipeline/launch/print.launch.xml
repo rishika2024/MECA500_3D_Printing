@@ -1,0 +1,23 @@
+<launch>
+    <arg name="model_file" default="/home/rishika/ws/meca500/src/Final_Project/mini_cube with hole.gcode.3mf"/>
+    <arg name="out_file" default="/home/rishika/ws/meca500/src/Final_Project/out_mini_cube_with_hole.txt"/>
+    <arg name="reach_csv" default="/home/rishika/ws/meca500/src/Final_Project/reachable_points.csv"/>
+    <arg name="layers" default="0"/>
+    <arg name="use_extruder" default="true" description="Attach the extruder end-effector meshes (true) or bare flange (false)"/>
+    <arg name="real_print" default="true" description="true = send gcode to Ender3, false = simulate only"/>
+    <arg name="use_mock_hardware" default="true" description="true = sim, false = real Meca500"/>
+
+    <!-- Config dir holding machine_settings.yaml, bed_settings.yaml and
+         print_tuning.yaml (see main.launch.xml). -->
+    <arg name="config_dir" default="$(find-pkg-share msr_meca500_print_pipeline)/config"/>
+
+    <!-- Bed pose for this print: true -> default_bed_pose; false -> fit the bed
+         plane from bed_touch_poses (+ bed_center_pose) in bed_settings.yaml. -->
+    <arg name="default_bed" default="true" description="true = default_bed_pose, false = fit from touch poses"/>
+
+    <!-- The planningscene node (which hosts /table_service and publishes
+         /table_marker) is launched by main.launch.xml, which must already
+         be running; this file only drives the per-print pipeline. -->
+    <executable cmd="bash $(find-pkg-share msr_meca500_print_pipeline)/launch/print_sequence.sh $(var model_file) $(var out_file) $(var reach_csv) $(var config_dir) $(var layers) $(var use_extruder) $(var use_mock_hardware) $(var real_print) $(var default_bed)"
+                output="screen"/>
+</launch>

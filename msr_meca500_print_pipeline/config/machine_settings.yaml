@@ -1,0 +1,31 @@
+# machine_settings.yaml -- values specific to YOUR hardware. Set these once,
+# during bring-up, following the commissioning steps in the README. A ROS 2
+# params file (`/**` -> every node); loaded by trajectory, reachability,
+# bed_from_touches and (for the temps + serial port) the print sequence scripts.
+
+/**:
+  ros__parameters:
+
+    # -- Ender3 / Marlin, over USB serial --------------------------------
+    printer_serial_port: "/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"
+    printer_baud: 115200
+    e_steps_per_mm: 93.0            # `M503` -> look for the M92 E value
+    home_xy_mm: [-3.00, -10.00]     # `M114` with the bed at its rest position
+                                    # (bare G28 "homing failed"-kills this firmware)
+    home_feedrate: 1200             # mm/min for the re-home move
+
+    # -- temperatures (printer + filament) -----------------------------
+    start_bed_temp_c:    65         # heat to this before the print
+    start_hotend_temp_c: 210
+    end_bed_temp_c:      25         # cool to this after the print
+    end_hotend_temp_c:   28
+
+    # -- end effector -------------------------------------------------
+    use_extruder: true                       # is the extruder physically mounted?
+    ee_link_with_extruder:    "nozzle"       # URDF link the nodes command...
+    ee_link_without_extruder: "link_6__flange"   # ...with vs without the extruder
+    # offset added along the commanded link's local +Z to reach the real contact
+    # point (m). With the extruder = nozzle-frame -> brass-tip gap: the URDF
+    # value is ~8 mm, but an RViz check on this rig suggested 14-20 mm.
+    tip_offset_with_extruder_m:    0.008
+    tip_offset_without_extruder_m: 0.0025

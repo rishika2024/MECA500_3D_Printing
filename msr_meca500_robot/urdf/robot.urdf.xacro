@@ -1,0 +1,51 @@
+<?xml version="1.0" ?>
+<!-- Re-rooted from the home-referenced Onshape export (doc 0427f697...).
+     Tree inverted mathematically: base is root, mates in Onshape untouched.
+     Zero position = true Meca500 home. Axis 0 0 -1 preserves the export's
+     rotation sense. Verified FK-equivalent to the export at machine precision.
+     Arm links/joints live in meca500.urdf, extruder geometry in
+     ender3_extruder.urdf; this file wires them together and adds ros2_control. -->
+<robot name="meca500" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="use_mock_hardware" default="true"/>
+  <xacro:arg name="joint_offsets_file" default="$(find msr_meca500_moveit)/config/joint_offsets.yaml"/>
+  <xacro:arg name="initial_positions_file" default="$(find msr_meca500_moveit)/config/initial_positions.yaml"/>
+
+  <!-- Extruder and background (Ender3 environment) attachments, each with a
+       toggle and a swappable urdf filename (relative to this package's urdf/
+       dir), so callers can point at a different geometry file without
+       touching this xacro. -->
+  <xacro:arg name="use_extruder" default="true"/>
+  <xacro:arg name="extruder_urdf" default="ender3_extruder.urdf"/>
+  <xacro:arg name="use_background" default="true"/>
+  <xacro:arg name="background_urdf" default="ender3_environment.urdf"/>
+
+  <!-- Mount offset of the background environment relative to link_0__base.
+       Defaults to identity (no offset) on purpose; callers that actually
+       want the environment mesh placed correctly must pass the real
+       calibration values, e.g. from a launch file. See ender3_environment.urdf
+       for where this is consumed. -->
+  <xacro:arg name="env_x" default="0"/>
+  <xacro:arg name="env_y" default="0"/>
+  <xacro:arg name="env_z" default="0"/>
+  <xacro:arg name="env_roll" default="0"/>
+  <xacro:arg name="env_pitch" default="0"/>
+  <xacro:arg name="env_yaw" default="0"/>
+
+  <xacro:include filename="$(find msr_meca500_robot)/urdf/robot.ros2_control.xacro" />
+
+  <xacro:meca500_ros2_control name="meca500" prefix="" use_mock_hardware="$(arg use_mock_hardware)"
+    joint_offsets_file="$(arg joint_offsets_file)"
+    initial_positions_file="$(arg initial_positions_file)"/>
+
+  <xacro:include filename="$(find msr_meca500_robot)/urdf/meca500.urdf" />
+
+  <xacro:if value="$(arg use_extruder)">
+    <xacro:include filename="$(find msr_meca500_robot)/urdf/$(arg extruder_urdf)" />
+  </xacro:if>
+
+  <xacro:if value="$(arg use_background)">
+    <xacro:include filename="$(find msr_meca500_robot)/urdf/$(arg background_urdf)" />
+  </xacro:if>
+
+</robot>

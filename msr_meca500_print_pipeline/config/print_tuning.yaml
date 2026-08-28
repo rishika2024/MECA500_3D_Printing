@@ -1,0 +1,31 @@
+# print_tuning.yaml -- pipeline defaults and constants tuned by the author.
+# A new build should be able to leave this file alone; only touch a value here
+# if you hit the specific problem its comment describes. A ROS 2 params file;
+# loaded by trajectory and reachability.
+
+/**:
+  ros__parameters:
+
+    # -- run mode (usually set per-run via the launch args, which win) -----
+    use_mock_hardware: true    # true = sim, false = real Meca500 over TCP
+    use_background:    true    # attach the Ender3 environment meshes
+    real_print:        true    # true = drive the Ender3 (temps + E), false = arm only
+    layers:            0       # 0 = every layer; N = an evenly-spaced N-layer subset
+
+    # -- reachability sweep --------------------------------------------
+    grid_n: 11                 # sweep an N x N grid over the bed
+    z_offset: 0.001            # probe this far above the bed surface (m)
+    approach_sweep_m: [0.05, 0.35, 0.02]   # standoff search: start, stop, step (m)
+    out_file: "reachable_points.csv"
+
+    # -- extrusion ------------------------------------------------
+    physical_min_e_steps:  30.0   # corner-taper floor: smallest E move a print
+                                  # segment may command (tested: 20 dropped a
+                                  # corner on mini_cube, 30 cleared it)
+    min_feed_rate:         17.5   # mm/min, soft floor
+    max_feed_rate:        165.0   # mm/min, hotend volumetric ceiling
+    transition_retract_mm: 1.0    # E backed off at a pause (F = home_feedrate)
+
+    # -- rehome -------------------------------------------------
+    rehome_chance_per_thousand: 5   # random re-home roll between batches
+    rehome_skip_last_layers:    3   # never re-home in the final N layers

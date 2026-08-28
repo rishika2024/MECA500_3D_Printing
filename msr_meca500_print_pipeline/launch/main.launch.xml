@@ -1,0 +1,58 @@
+<launch>
+    <arg name='use_mock_hardware' default='true' description='true = sim, false = real Meca500'/>
+    <arg name='use_extruder' default='true' description='Attach the extruder end-effector meshes (true) or bare flange (false)'/>
+    <arg name='use_background' default='true' description='Attach the Ender3 environment meshes (true) or not (false)'/>
+    <arg name='real_print' default='true' description='true = send gcode to Ender3, false = simulate only'/>
+
+    <!-- Config lives in three files under this dir:
+           machine_settings.yaml  - your hardware (set once at bring-up)
+           bed_settings.yaml      - where the bed is (from the touch procedure)
+           print_tuning.yaml      - author-tuned constants (leave alone) -->
+    <arg name='config_dir' default='$(find-pkg-share msr_meca500_print_pipeline)/config'/>
+
+    <!-- Bed pose on startup: true -> default_bed_pose; false -> fit from
+         bed_touch_poses. Overrides bed_settings.yaml's `default_bed`.
+         print.launch.xml re-sets the bed per print, so the last run wins. -->
+    <arg name='default_bed' default='true' description='true = default_bed_pose, false = fit from touch poses'/>
+
+    <!-- demo.launch.py owns the full robot_description build (arm + extruder +
+         background environment, with the calibrated mount offset) since it's
+         the one that spawns robot_state_publisher, the only thing RViz's
+         RobotModel display actually reads. -->
+    <include file='$(find-pkg-share msr_meca500_moveit)/launch/demo.launch.py'>
+        <arg name='use_mock_hardware' value='$(var use_mock_hardware)'/>
+        <arg name='use_rviz' value='false'/>
+        <arg name='use_extruder' value='$(var use_extruder)'/>
+        <arg name='use_background' value='$(var use_background)'/>
+    </include>
+
+    <node pkg='rviz2' exec='rviz2' output='screen'
+          args='-d $(find-pkg-share msr_meca500_print_pipeline)/config/main.rviz'/>
+
+    <!-- Hosts /table_service and publishes /table_marker (the bed pose the gcode
+         print executor builds every print's coordinate transform from). Its
+         own baked default is just the startup value; bed_from_touches sets the
+         real pose right after. -->
+    <node pkg='msr_meca500_print_pipeline' exec='planningscene' output='screen'/>
+
+    <!-- Set the bed pose once on startup. print.launch.xml re-runs this per
+         print via print_sequence.sh, so the last run wins. -->
+    <node pkg='msr_meca500_print_pipeline' exec='bed_from_touches' output='screen'>
+        <param from='$(var config_dir)/machine_settings.yaml'/>
+        <param from='$(var config_dir)/bed_settings.yaml'/>
+        <param name='default_bed' value='$(var default_bed)' type='bool'/>
+    </node>
+
+    <node pkg='msr_meca500_print_pipeline' exec='gcode_print_executor'>
+        <param from='$(var config_dir)/machine_settings.yaml'/>
+        <param from='$(var config_dir)/print_tuning.yaml'/>
+        <param name="robot_description" value="$(command 'xacro $(find-pkg-share msr_meca500_moveit)/config/meca500.urdf.xacro use_mock_hardware:=$(var use_mock_hardware) use_extruder:=$(var use_extruder)')" type="str"/>
+        <param name="robot_description_semantic" value="$(command 'cat $(find-pkg-share msr_meca500_moveit)/config/meca500.srdf')" type="str"/>
+        <param from='$(find-pkg-share msr_meca500_print_pipeline)/config/kinematics.yaml'/>
+        <!-- re-apply the CLI-overridable bools after the config so a command-line
+             override still wins -->
+        <param name='use_mock_hardware' value='$(var use_mock_hardware)'/>
+        <param name='use_extruder' value='$(var use_extruder)'/>
+        <param name='real_print' value='$(var real_print)'/>
+    </node>
+</launch>

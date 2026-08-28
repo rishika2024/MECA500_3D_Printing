@@ -1,0 +1,2324 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape https://cad.onshape.com/documents/0427f697374fea076d1b19d0/w/ebacd5e6d06ed8cf5bc37033/e/cf34a4ee7a70d49266eb3db3 -->
+<robot name="ender3_environment">
+  <!-- Environment-only: Ender3 printer chassis/frame + bed/Y-carriage, split
+       out of the combined onshape-to-robot export (which also contained
+       duplicate Meca500 arm + extruder geometry, now removed; those live in
+       meca500.urdf and ender3_extruder.urdf). This link attaches to the
+       arm's link_0__base via the fixed joint below, using the rigid
+       transform recovered from the original combined export's link_0__base
+       placement (see robot.urdf.xacro for where this file is included). -->
+  <link name="ender3_environment">
+    <inertial>
+      <origin xyz="-0.103736 -0.0598507 0.164401" rpy="0 0 0"/>
+      <mass value="6.10726"/>
+      <inertia ixx="0.0876849" ixy="-0.000246712" ixz="0.000370363" iyy="0.0738285" iyz="-0.0187701" izz="0.0215746"/>
+    </inertial>
+    <!-- Part hand_twisted_nut_手扭螺母_大 -->
+    <visual>
+      <origin xyz="0.036155 0.0428868 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+      <material name="hand_twisted_nut_手扭螺母_大_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.036155 0.0428868 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part limit_switch -->
+    <visual>
+      <origin xyz="-0.063001 -0.0135011 0.058213" rpy="0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/limit_switch.stl"/>
+      </geometry>
+      <material name="limit_switch_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.063001 -0.0135011 0.058213" rpy="0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/limit_switch.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 2020_endcap -->
+    <visual>
+      <origin xyz="0.119999 0.0865489 0.45" rpy="0 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2020_endcap.stl"/>
+      </geometry>
+      <material name="2020_endcap_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.119999 0.0865489 0.45" rpy="0 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2020_endcap.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 2040_profile_20_40_l400_两端m5_15_侧面2个m4沉头 -->
+    <visual>
+      <origin xyz="-0.183001 0.0865489 0.44" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2040_profile_20_40_l400_两端m5_15_侧面2个m4沉头.stl"/>
+      </geometry>
+      <material name="2040_profile_20_40_l400_两端m5_15_侧面2个m4沉头_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.193001 0.0865489 0.24" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.4"/>
+      </geometry>
+    </collision>
+    <!-- Part 4040_profile_40_40_l290_4个沉头通孔_2个m5 -->
+    <visual>
+      <origin xyz="0.106999 0.231549 0.03" rpy="1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_profile_40_40_l290_4个沉头通孔_2个m5.stl"/>
+      </geometry>
+      <material name="4040_profile_40_40_l290_4个沉头通孔_2个m5_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.106999 0.231549 0.03" rpy="1.5708 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_profile_40_40_l290_4个沉头通孔_2个m5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 4040_profile_40_40_l250_4个m5螺纹_2个沉头_1个m3_两个槽 -->
+    <visual>
+      <origin xyz="-0.173001 0.0965489 0.01" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_profile_40_40_l250_4个m5螺纹_2个沉头_1个m3_两个槽.stl"/>
+      </geometry>
+      <material name="4040_profile_40_40_l250_4个m5螺纹_2个沉头_1个m3_两个槽_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.173001 0.0965489 0.01" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_profile_40_40_l250_4个m5螺纹_2个沉头_1个m3_两个槽.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 4040_endcap -->
+    <visual>
+      <origin xyz="0.096999 -0.0584511 0.02" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_endcap.stl"/>
+      </geometry>
+      <material name="4040_endcap_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.096999 -0.0584511 0.02" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_endcap.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part copper_cover -->
+    <visual>
+      <origin xyz="-0.048145 0.147537 0.08085" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/copper_cover.stl"/>
+      </geometry>
+      <material name="copper_cover_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.048145 0.147537 0.08085" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/copper_cover.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 2040_profile_20_40_l400_两端4个m5_15_侧面2个m4 -->
+    <visual>
+      <origin xyz="0.086999 0.0865489 0.04" rpy="1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2040_profile_20_40_l400_两端4个m5_15_侧面2个m4.stl"/>
+      </geometry>
+      <material name="2040_profile_20_40_l400_两端4个m5_15_侧面2个m4_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.096999 0.0865489 0.24" rpy="0 0 0"/>
+      <geometry>
+         <cylinder radius="0.05" length="0.4"/>
+      </geometry>
+    </collision>
+    <!-- Part 2020_endcap_2 -->
+    <visual>
+      <origin xyz="-0.216001 0.0865489 0.45" rpy="0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2020_endcap.stl"/>
+      </geometry>
+      <material name="2020_endcap_2_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.216001 0.0865489 0.45" rpy="0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2020_endcap.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part bed_level_springs -->
+    <visual>
+      <origin xyz="0.036155 0.0428868 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+      <material name="bed_level_springs_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.036155 0.0428868 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part hand_twisted_nut_手扭螺母_大_2 -->
+    <visual>
+      <origin xyz="-0.133845 0.0428868 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+      <material name="hand_twisted_nut_手扭螺母_大_2_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.133845 0.0428868 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 2040_profile_20_40_l330_侧面4个m4_2个m5 -->
+    <visual>
+      <origin xyz="-0.048001 -0.0334511 0.063" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2040_profile_20_40_l330_侧面4个m4_2个m5.stl"/>
+      </geometry>
+      <material name="2040_profile_20_40_l330_侧面4个m4_2个m5_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.048001 -0.0334511 0.063" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2040_profile_20_40_l330_侧面4个m4_2个m5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part control_panel -->
+    <visual>
+      <origin xyz="-0.000701 0.0697489 -0.0333" rpy="1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/control_panel.stl"/>
+      </geometry>
+      <material name="control_panel_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.000701 0.0697489 -0.0333" rpy="1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/control_panel.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part y_belt -->
+    <visual>
+      <origin xyz="-0.044501 0.313549 0.063" rpy="-3.14159 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_belt.stl"/>
+      </geometry>
+      <material name="y_belt_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.044501 0.313549 0.063" rpy="-3.14159 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_belt.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 42_34_motor -->
+    <visual>
+      <origin xyz="-0.035001 -0.0624511 0.064" rpy="0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/42_34_motor.stl"/>
+      </geometry>
+      <material name="42_34_motor_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.035001 -0.0624511 0.064" rpy="0 0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/42_34_motor.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part lcd -->
+    <visual>
+      <origin xyz="-0.225001 0.165404 0.0604998" rpy="-1.13446 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd.stl"/>
+      </geometry>
+      <material name="lcd_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.225001 0.165404 0.0604998" rpy="-1.13446 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 2gt_pulley -->
+    <visual>
+      <origin xyz="0.0256907 -0.193922 0.185338" rpy="-1.5708 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2gt_pulley.stl"/>
+      </geometry>
+      <material name="2gt_pulley_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.0256907 -0.193922 0.185338" rpy="-1.5708 0 3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2gt_pulley.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part eccentric_column -->
+    <visual>
+      <origin xyz="-0.068301 0.0716867 0.06855" rpy="-1.5708 0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/eccentric_column.stl"/>
+      </geometry>
+      <material name="eccentric_column_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068301 0.0716867 0.06855" rpy="-1.5708 0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/eccentric_column.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part spacers_for_rollers -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.0685" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/spacers_for_rollers.stl"/>
+      </geometry>
+      <material name="spacers_for_rollers_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.0685" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/spacers_for_rollers.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part y_limit_switch_bracket -->
+    <visual>
+      <origin xyz="0.00449894 0.221549 0.051" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_limit_switch_bracket.stl"/>
+      </geometry>
+      <material name="y_limit_switch_bracket_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.00449894 0.221549 0.051" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_limit_switch_bracket.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part bed_level_springs_2 -->
+    <visual>
+      <origin xyz="-0.133845 0.212887 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+      <material name="bed_level_springs_2_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.133845 0.212887 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part z_coupler -->
+    <visual>
+      <origin xyz="0.096999 0.0555489 0.09375" rpy="-0 -0 -1.00681"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_coupler.stl"/>
+      </geometry>
+      <material name="z_coupler_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.096999 0.0555489 0.09375" rpy="-0 -0 -1.00681"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_coupler.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part y_motor_holder -->
+    <visual>
+      <origin xyz="-0.0395011 0.206549 0.05" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_motor_holder.stl"/>
+      </geometry>
+      <material name="y_motor_holder_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0395011 0.206549 0.05" rpy="-1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_motor_holder.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part power_switch -->
+    <visual>
+      <origin xyz="-0.224501 0.0268489 0.0855" rpy="-0 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/power_switch.stl"/>
+      </geometry>
+      <material name="power_switch_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.224501 0.0268489 0.0855" rpy="-0 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/power_switch.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part lcd_2 -->
+    <visual>
+      <origin xyz="-0.225001 0.165404 0.0604998" rpy="-1.13446 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd__2.stl"/>
+      </geometry>
+      <material name="lcd_2_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.225001 0.165404 0.0604998" rpy="-1.13446 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part spacers_for_rollers_2 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.0685" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/spacers_for_rollers.stl"/>
+      </geometry>
+      <material name="spacers_for_rollers_2_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.0685" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/spacers_for_rollers.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part lcd_knob -->
+    <visual>
+      <origin xyz="-0.256101 0.20295 0.0617493" rpy="-0.436332 0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd_knob.stl"/>
+      </geometry>
+      <material name="lcd_knob_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.256101 0.20295 0.0617493" rpy="-0.436332 0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd_knob.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part part_1 -->
+    <visual>
+      <origin xyz="-0.111874 -0.0407129 -0.00562984" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/part_1.stl"/>
+      </geometry>
+      <material name="part_1_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.111874 -0.0407129 -0.00562984" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/part_1.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part hot_bed -->
+    <visual>
+      <origin xyz="-0.048845 0.127887 0.0979637" rpy="-1.5708 0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hot_bed.stl"/>
+      </geometry>
+      <material name="hot_bed_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.048845 0.127887 0.0979637" rpy="-1.5708 0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hot_bed.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part lcd_support -->
+    <visual>
+      <origin xyz="-0.173001 0.233549 0.001" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd_support.stl"/>
+      </geometry>
+      <material name="lcd_support_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.173001 0.233549 0.001" rpy="-1.5708 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/lcd_support.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 4040_endcap_2 -->
+    <visual>
+      <origin xyz="-0.193001 -0.0584511 0.02" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_endcap.stl"/>
+      </geometry>
+      <material name="4040_endcap_2_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.193001 -0.0584511 0.02" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_endcap.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 42_34_motor_2 -->
+    <visual>
+      <origin xyz="0.096999 0.0555489 0.07375" rpy="-1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/42_34_motor.stl"/>
+      </geometry>
+      <material name="42_34_motor_2_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.096999 0.0555489 0.07375" rpy="-1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/42_34_motor.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part case_fan -->
+    <visual>
+      <origin xyz="-0.0906927 0.184523 0.0546026" rpy="-2.53073 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/case_fan.stl"/>
+      </geometry>
+      <material name="case_fan_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0906927 0.184523 0.0546026" rpy="-2.53073 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/case_fan.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part sheetmetal_enclosure_top -->
+    <visual>
+      <origin xyz="0.020499 0.169849 0.0408" rpy="-0 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/sheetmetal_enclosure_top.stl"/>
+      </geometry>
+      <material name="sheetmetal_enclosure_top_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.020499 0.169849 0.0408" rpy="-0 -0 -3.14159"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/sheetmetal_enclosure_top.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part bed_level_springs_3 -->
+    <visual>
+      <origin xyz="-0.133845 0.0428868 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+      <material name="bed_level_springs_3_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.133845 0.0428868 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part hand_twisted_nut_手扭螺母_大_3 -->
+    <visual>
+      <origin xyz="0.036155 0.212887 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+      <material name="hand_twisted_nut_手扭螺母_大_3_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.036155 0.212887 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part z_threaded_rod -->
+    <visual>
+      <origin xyz="0.096999 0.0555489 0.09375" rpy="-1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_threaded_rod.stl"/>
+      </geometry>
+      <material name="z_threaded_rod_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.096999 0.0555489 0.09375" rpy="-1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_threaded_rod.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part hand_twisted_nut_手扭螺母_大_4 -->
+    <visual>
+      <origin xyz="-0.133845 0.212887 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+      <material name="hand_twisted_nut_手扭螺母_大_4_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.133845 0.212887 0.0680234" rpy="-1.5708 -0 1.92568"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/hand_twisted_nut_手扭螺母_大.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part z_motor_bracket -->
+    <visual>
+      <origin xyz="0.096999 0.0665489 0.07375" rpy="-1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_motor_bracket.stl"/>
+      </geometry>
+      <material name="z_motor_bracket_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.096999 0.0665489 0.07375" rpy="-1.5708 -0 -0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_motor_bracket.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part power_holder -->
+    <visual>
+      <origin xyz="-0.195501 0.0188489 0.0575" rpy="-1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/power_holder.stl"/>
+      </geometry>
+      <material name="power_holder_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.195501 0.0188489 0.0575" rpy="-1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/power_holder.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part eccentric_column_2 -->
+    <visual>
+      <origin xyz="-0.068301 0.111687 0.06855" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/eccentric_column.stl"/>
+      </geometry>
+      <material name="eccentric_column_2_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068301 0.111687 0.06855" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/eccentric_column.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part copper_cover_2 -->
+    <visual>
+      <origin xyz="-0.047501 0.177037 0.08085" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/copper_cover.stl"/>
+      </geometry>
+      <material name="copper_cover_2_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.047501 0.177037 0.08085" rpy="-1.5708 0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/copper_cover.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part support_frame -->
+    <visual>
+      <origin xyz="-0.166293 0.0965489 0.46" rpy="-1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/support_frame.stl"/>
+      </geometry>
+      <material name="support_frame_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.166293 0.0965489 0.46" rpy="-1.5708 -0 -1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/support_frame.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part bed_level_springs_4 -->
+    <visual>
+      <origin xyz="0.036155 0.212887 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+      <material name="bed_level_springs_4_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.036155 0.212887 0.08085" rpy="-1.5708 -0 -0.762516"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/bed_level_springs.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part support_tube -->
+    <visual>
+      <origin xyz="-0.146293 0.180049 0.59" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/support_tube.stl"/>
+      </geometry>
+      <material name="support_tube_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.146293 0.180049 0.59" rpy="1.5708 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/support_tube.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part y_plate -->
+    <visual>
+      <origin xyz="-0.048845 0.127887 0.08085" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_plate.stl"/>
+      </geometry>
+      <material name="y_plate_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.048845 0.127887 0.08085" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_plate.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 2020_profile_20_20_l330_4个沉头通孔 -->
+    <visual>
+      <origin xyz="-0.213001 0.0865489 0.45" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2020_profile_20_20_l330_4个沉头通孔.stl"/>
+      </geometry>
+      <material name="2020_profile_20_20_l330_4个沉头通孔_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.213001 0.0865489 0.45" rpy="0 -0 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/2020_profile_20_20_l330_4个沉头通孔.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 4040_profile_40_40_l290_2_4个沉头通孔_2个m5 -->
+    <visual>
+      <origin xyz="-0.203001 -0.0584511 0.03" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_profile_40_40_l290_2_4个沉头通孔_2个m5.stl"/>
+      </geometry>
+      <material name="4040_profile_40_40_l290_2_4个沉头通孔_2个m5_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.203001 -0.0584511 0.03" rpy="1.5708 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/4040_profile_40_40_l290_2_4个沉头通孔_2个m5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part sheetmetal_enclosure_bottom -->
+    <visual>
+      <origin xyz="0.020499 0.169849 0.0008" rpy="0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/sheetmetal_enclosure_bottom.stl"/>
+      </geometry>
+      <material name="sheetmetal_enclosure_bottom_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.020499 0.169849 0.0008" rpy="0 -0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/sheetmetal_enclosure_bottom.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 24v15a_power_supply -->
+    <visual>
+      <origin xyz="-0.171001 0.0200489 0.195" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/24v15a_power_supply.stl"/>
+      </geometry>
+      <material name="24v15a_power_supply_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.171001 0.0200489 0.195" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/24v15a_power_supply.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+      <material name="625pillow_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_2 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+      <material name="625pillow_2_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_3 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+      <material name="625pillow_3_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_4 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+      <material name="625pillow_4_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_5 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+      <material name="625pillow_5_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rollers -->
+    <visual>
+      <origin xyz="-0.064245 0.125387 0.07645" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/rollers.stl"/>
+      </geometry>
+      <material name="rollers_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.064245 0.125387 0.07645" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/rollers.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_6 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+      <material name="625pillow_6_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_7 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+      <material name="625pillow_7_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_8 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+      <material name="625pillow_8_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_9 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+      <material name="625pillow_9_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_10 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+      <material name="625pillow_10_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_11 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+      <material name="625pillow_11_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_12 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+      <material name="625pillow_12_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_13 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+      <material name="625pillow_13_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_14 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+      <material name="625pillow_14_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_15 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+      <material name="625pillow_15_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_16 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+      <material name="625pillow_16_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_17 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+      <material name="625pillow_17_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_18 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+      <material name="625pillow_18_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_19 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+      <material name="625pillow_19_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_20 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+      <material name="625pillow_20_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_21 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+      <material name="625pillow_21_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_22 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+      <material name="625pillow_22_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_23 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+      <material name="625pillow_23_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_24 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+      <material name="625pillow_24_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_25 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+      <material name="625pillow_25_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_26 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+      <material name="625pillow_26_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_27 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+      <material name="625pillow_27_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_28 -->
+    <visual>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+      <material name="625pillow_28_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.140887 0.06" rpy="-0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part z_limit_switch_bracket -->
+    <visual>
+      <origin xyz="0.121999 0.0970489 0.071" rpy="3.14159 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_limit_switch_bracket.stl"/>
+      </geometry>
+      <material name="z_limit_switch_bracket_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.121999 0.0970489 0.071" rpy="3.14159 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/z_limit_switch_bracket.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part limit_switch_2 -->
+    <visual>
+      <origin xyz="0.116999 0.107549 0.07195" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/limit_switch.stl"/>
+      </geometry>
+      <material name="limit_switch_2_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.116999 0.107549 0.07195" rpy="1.5708 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/limit_switch.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_29 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+      <material name="625pillow_29_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_30 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+      <material name="625pillow_30_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_31 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+      <material name="625pillow_31_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_32 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+      <material name="625pillow_32_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_33 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+      <material name="625pillow_33_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_34 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+      <material name="625pillow_34_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_35 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+      <material name="625pillow_35_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_36 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+      <material name="625pillow_36_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_37 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+      <material name="625pillow_37_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rollers_2 -->
+    <visual>
+      <origin xyz="-0.064245 0.0853868 0.07645" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/rollers.stl"/>
+      </geometry>
+      <material name="rollers_2_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.064245 0.0853868 0.07645" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/rollers.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_38 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+      <material name="625pillow_38_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_39 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+      <material name="625pillow_39_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_40 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+      <material name="625pillow_40_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_41 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+      <material name="625pillow_41_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_42 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+      <material name="625pillow_42_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_43 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+      <material name="625pillow_43_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_44 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+      <material name="625pillow_44_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_45 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+      <material name="625pillow_45_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_46 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+      <material name="625pillow_46_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_47 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+      <material name="625pillow_47_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_48 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+      <material name="625pillow_48_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_49 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+      <material name="625pillow_49_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_50 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+      <material name="625pillow_50_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_51 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+      <material name="625pillow_51_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_52 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+      <material name="625pillow_52_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_53 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+      <material name="625pillow_53_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_54 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+      <material name="625pillow_54_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_55 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+      <material name="625pillow_55_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_56 -->
+    <visual>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+      <material name="625pillow_56_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.028745 0.100887 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part rollers_3 -->
+    <visual>
+      <origin xyz="-0.104445 0.103687 0.07645" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/rollers.stl"/>
+      </geometry>
+      <material name="rollers_3_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.104445 0.103687 0.07645" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/rollers.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_57 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+      <material name="625pillow_57_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_58 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+      <material name="625pillow_58_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_59 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+      <material name="625pillow_59_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_60 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+      <material name="625pillow_60_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_61 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+      <material name="625pillow_61_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_62 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+      <material name="625pillow_62_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_63 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+      <material name="625pillow_63_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_64 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+      <material name="625pillow_64_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_65 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+      <material name="625pillow_65_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__13.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_66 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+      <material name="625pillow_66_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_67 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+      <material name="625pillow_67_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_68 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+      <material name="625pillow_68_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_69 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+      <material name="625pillow_69_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__12.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_70 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+      <material name="625pillow_70_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__11.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_71 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+      <material name="625pillow_71_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__6.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_72 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+      <material name="625pillow_72_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_73 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+      <material name="625pillow_73_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_74 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+      <material name="625pillow_74_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__2.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_75 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+      <material name="625pillow_75_material">
+        <color rgba="0.647059 0.647059 0.647059 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__3.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_76 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+      <material name="625pillow_76_material">
+        <color rgba="0.615686 0.811765 0.929412 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__5.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_77 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+      <material name="625pillow_77_material">
+        <color rgba="0.972549 0.529412 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__10.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_78 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+      <material name="625pillow_78_material">
+        <color rgba="0.231373 0.380392 0.705882 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__4.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_79 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+      <material name="625pillow_79_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_80 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+      <material name="625pillow_80_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_81 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+      <material name="625pillow_81_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__14.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_82 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+      <material name="625pillow_82_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.06" rpy="0 -1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__7.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_83 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+      <material name="625pillow_83_material">
+        <color rgba="0.917647 0.917647 0.917647 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__8.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part 625pillow_84 -->
+    <visual>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+      <material name="625pillow_84_material">
+        <color rgba="0.768627 0.886275 0.952941 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.068945 0.119187 0.066" rpy="-3.14159 1.5708 0"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/625pillow__9.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part f688_pillow -->
+    <visual>
+      <origin xyz="-0.043501 0.313549 0.063" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/f688_pillow.stl"/>
+      </geometry>
+      <material name="f688_pillow_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.043501 0.313549 0.063" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/f688_pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part f688_pillow_2 -->
+    <visual>
+      <origin xyz="-0.053501 0.313549 0.063" rpy="1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/f688_pillow.stl"/>
+      </geometry>
+      <material name="f688_pillow_2_material">
+        <color rgba="0.498039 0.498039 0.498039 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.053501 0.313549 0.063" rpy="1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/f688_pillow.stl"/>
+      </geometry>
+    </collision>
+    <!-- Part y_adjustment_block_y轴被动块 -->
+    <visual>
+      <origin xyz="-0.0395011 0.297549 0.05" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_adjustment_block_y轴被动块.stl"/>
+      </geometry>
+      <material name="y_adjustment_block_y轴被动块_material">
+        <color rgba="0.980392 0.713725 0.00392157 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.0395011 0.297549 0.05" rpy="-1.5708 0 1.5708"/>
+      <geometry>
+        <mesh filename="package://msr_meca500_robot/meshes_meca500_with_ender3/y_adjustment_block_y轴被动块.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Fixed joint mounting the environment to link_0__base. The offset is
+       supplied via env_x/env_y/env_z/env_roll/env_pitch/env_yaw (declared in
+       robot.urdf.xacro, default identity) rather than hardcoded here, so the
+       calibrated placement lives in whatever launch file sets those args.
+       The calibrated values, recovered by comparing link_0__base's pose in
+       the original combined onshape-to-robot export against its own-frame
+       origin in meca500.urdf and cross-checked against a second landmark
+       (link_6__flange FK) to sub-100-micron agreement, are:
+       xyz="-0.1034567 -0.0740003 -0.08937016" rpy="0 0 -3.14159". This mount
+       transform is unaffected by the bed/Y-carriage addition below, since
+       link_0__base's own landmark position did not change between exports. -->
+  <joint name="ender3_environment_joint" type="fixed">
+    <origin xyz="$(arg env_x) $(arg env_y) $(arg env_z)" rpy="$(arg env_roll) $(arg env_pitch) $(arg env_yaw)"/>
+    <parent link="link_0__base"/>
+    <child link="ender3_environment"/>
+  </joint>
+</robot>

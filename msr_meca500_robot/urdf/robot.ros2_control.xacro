@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="meca500_ros2_control" params="name prefix use_mock_hardware joint_offsets_file initial_positions_file">
+
+    <xacro:arg name="robot_ip" default="192.168.0.100"/>
+    <xacro:arg name="control_port" default="10000"/>
+    <xacro:arg name="monitoring_port" default="10001"/>
+
+    <xacro:property name="offsets" value="${xacro.load_yaml(joint_offsets_file)}"/>
+    <xacro:property name="initial_positions" value="${xacro.load_yaml(initial_positions_file)['initial_positions']}"/>
+
+    <ros2_control name="${name}" type="system">
+
+      <!-- Real hardware -->
+      <xacro:unless value="${use_mock_hardware}">
+        <hardware>
+          <plugin>msr_meca500_hardware/Meca500System</plugin>
+          <param name="robot_ip">$(arg robot_ip)</param>
+          <param name="control_port">$(arg control_port)</param>
+          <param name="monitoring_port">$(arg monitoring_port)</param>
+          <param name="joint1_offset_deg">${offsets['joint1']}</param>
+          <param name="joint2_offset_deg">${offsets['joint2']}</param>
+          <param name="joint3_offset_deg">${offsets['joint3']}</param>
+          <param name="joint4_offset_deg">${offsets['joint4']}</param>
+          <param name="joint5_offset_deg">${offsets['joint5']}</param>
+          <param name="joint6_offset_deg">${offsets['joint6']}</param>
+        </hardware>
+      </xacro:unless>
+
+      <!-- Fake hardware for testing without the robot -->
+      <xacro:if value="${use_mock_hardware}">
+        <hardware>
+          <plugin>mock_components/GenericSystem</plugin>
+          <param name="calculate_dynamics">true</param>
+        </hardware>
+      </xacro:if>
+
+      <joint name="${prefix}joint1">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">${initial_positions['joint1']}</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+
+      <joint name="${prefix}joint2">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">${initial_positions['joint2']}</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+
+      <joint name="${prefix}joint3">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">${initial_positions['joint3']}</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+
+      <joint name="${prefix}joint4">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">${initial_positions['joint4']}</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+
+      <joint name="${prefix}joint5">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">${initial_positions['joint5']}</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+
+      <joint name="${prefix}joint6">
+        <command_interface name="position"/>
+        <state_interface name="position">
+          <param name="initial_value">${initial_positions['joint6']}</param>
+        </state_interface>
+        <state_interface name="velocity"/>
+      </joint>
+
+    </ros2_control>
+
+  </xacro:macro>
+
+</robot>
