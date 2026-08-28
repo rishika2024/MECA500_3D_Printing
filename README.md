@@ -60,22 +60,15 @@ Build order (`msr_gcode` + `msr_meca500_robot` → `msr_meca500_hardware` → `m
 
 ## Configuration
 
-`msr_meca500_print_pipeline/config/` holds three ROS 2 params files, loaded by the
-launch files (`<param from>`) and read directly by the Ender3 sequence scripts.
-Split by *who sets each value and when*:
+The pipeline reads its settings from three params files in `msr_meca500_print_pipeline/config/`:
 
-| file | contents | you touch it... |
-|---|---|---|
-| `machine_settings.yaml` | serial port, baud, E-steps/mm, home XY + feedrate, temps, extruder link names + tip offsets | once, at bring-up |
-| `bed_settings.yaml` | `default_bed`, `default_bed_pose`, and the nozzle **touch poses** the plane is fit from | whenever the bed moves — output of the touch procedure below |
-| `print_tuning.yaml` | run-mode defaults, reachability grid, extrusion floor + feed rates, re-home constants | rarely; only if a comment tells you to |
+- **`machine_settings.yaml`** — your printer: serial port + baud, `M503` E-steps/mm, `M114` home position, hotend/bed temperatures, the extruder link names and nozzle tip offset. Set once, when you first wire up a machine.
+- **`bed_settings.yaml`** — where the bed is: `default_bed` (use the flat default vs. fit from touches), `default_bed_pose`, and the nozzle touch poses. Regenerate whenever the bed moves (see below).
+- **`print_tuning.yaml`** — constants already tuned by the author: reachability grid size, extrusion floor and feed-rate limits, re-home frequency. Leave it alone unless a comment in the file tells you otherwise.
 
-**Locating the bed** (`default_bed:=false`): jog the nozzle to touch the bed at
-≥3 spots, and once at the centre. For each, record the `position` list from
-`ros2 topic echo /joint_states` into `bed_settings.yaml` (`bed_touch_poses`
-flattened 6-at-a-time, `bed_center_pose` for the centre). `bed_from_touches`
-runs FK on each to get the nozzle tip, fits the plane by SVD, and sets it on
-`/table_service`. With `default_bed:=true` it just uses `default_bed_pose`.
+The launch files load all three (`<param from>`); the Ender3 heat/cool scripts read `machine_settings.yaml` directly.
+
+**Fitting the bed** — set `default_bed: false`, then jog the nozzle to touch the bed at three or more points plus the centre. At each, read the `position` list from `ros2 topic echo /joint_states` and paste it into `bed_settings.yaml` — `bed_touch_poses` (six values per pose), and `bed_center_pose` for the centre. `bed_from_touches` runs FK to the nozzle tip for each, fits the plane by SVD, and publishes it on `/table_service`.
 
 ## Demos
 
