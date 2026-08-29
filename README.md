@@ -35,9 +35,6 @@ git apply /path/to/Final_Project/patches/pilz_industrial_motion_planner.patch
 # into the same workspace as this repo
 ```
 
-## Setup
-<img width="2040" alt="Full Setup" src="https://github.com/user-attachments/assets/774f2ea0-13c4-4861-8aae-b70a6dd08630" />
-
 ### Build
 
 Needs ROS 2 Kilted with MoveIt 2, plus the patched Pilz planner (above) built into the same workspace.
@@ -70,7 +67,14 @@ The launch files load all three (`<param from>`); the Ender3 heat/cool scripts r
 
 **Fitting the bed** — set `default_bed: false`, then jog the nozzle to touch the bed at three or more points plus the centre. At each, read the `position` list from `ros2 topic echo /joint_states` and paste it into `bed_settings.yaml` — `bed_touch_poses` (six values per pose), and `bed_center_pose` for the centre. `bed_from_touches` runs FK to the nozzle tip for each, fits the plane by SVD, and publishes it on `/table_service`.
 
+## Setup
+<img width="2040" alt="Full Setup" src="https://github.com/user-attachments/assets/774f2ea0-13c4-4861-8aae-b70a6dd08630" />
+
 ## Demos
+
+* **3D Printing a mini cube with a hole inside at an angle**
+
+  https://private-user-images.githubusercontent.com/172546714/643002647-4696a0f3-8137-4601-b20b-12334d42cbb4.mp4?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODc5NjY4NTMsIm5iZiI6MTc4Nzk2NjU1MywicGF0aCI6Ii8xNzI1NDY3MTQvNjQzMDAyNjQ3LTQ2OTZhMGYzLTgxMzctNDYwMS1iMjBiLTEyMzM0ZDQyY2JiNC5tcDQ_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwODI5JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDgyOVQwMTIyMzNaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03M2U5NzAyYjQ1MDA2YzhmMmVhYTY5YWFkMWRlMGUzZWE4NjAzZjJjYjk2NWNhZjU0MjcwODc1MDUyNDNkOTQwJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9dmlkZW8lMkZtcDQifQ.rA_YtJKQpa8r2xmKerp904TmiNJI0AuAIbLSaFfLsvc
 
 In the RViz views below, the **green** line is the `ee_trace` (every sampled end-effector position) and the **purple** line is the `print_trace` (only the segments where the nozzle was actually extruding).
 
