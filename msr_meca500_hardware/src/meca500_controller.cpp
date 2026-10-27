@@ -192,7 +192,7 @@ namespace msr_meca500_hardware
             "Robot says: %s", buffer);
 
           // Enable real-time joint position monitoring at 10 ms intervals, to
-          // match the 100Hz (10ms) ros2_control loop -- the previous 15ms
+          // match the 100Hz (10ms) ros2_control loop
           // interval meant most control cycles saw no new packet at all.
           // Firmware v11+ uses SetMonitoringInterval(seconds); older used SetRTCMonitoringInterval(ms).
           std::string rtc_cmd = "SetMonitoringInterval(0.01)";

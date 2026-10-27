@@ -41,6 +41,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/Table.srv"
   "srv/Goal.srv"
   "srv/GcodeFile.srv"
+  "srv/VerticeCsv.srv"
 )
 
 # ── planningscene node ───
